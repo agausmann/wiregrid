@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://components.tres" type="TileSet" id=1]
+
+[node name="World" type="Node2D"]
+
+[node name="WireForeground" type="TileMap" parent="."]
+rotation = -0.000446992
+z_index = 1
+tile_set = ExtResource( 1 )
+cell_size = Vector2( 16, 16 )
+cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
+cell_tile_origin = 2
+format = 1
+tile_data = PoolIntArray( 131074, 1610612741, 65536, 131075, -1610612731, 2, 131076, 1610612741, 65536 )
+
+[node name="Components" type="TileMap" parent="."]
+tile_set = ExtResource( 1 )
+cell_size = Vector2( 16, 16 )
+cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
+format = 1
+tile_data = PoolIntArray( 65539, 1610612740, 65536, 131074, -1610612733, 65536, 131075, 3, 0, 131076, -1073741821, 65536, 196610, 1, 65536, 196612, 1, 65536 )
+
+[node name="WireBackground" type="TileMap" parent="."]
+z_index = -1
+tile_set = ExtResource( 1 )
+cell_size = Vector2( 16, 16 )
+cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
+format = 1
+tile_data = PoolIntArray( 65539, 1610612741, 65536, 131074, -1610612731, 0, 131075, 5, 65536, 131076, -1073741819, 0, 196610, 5, 65536, 196612, 5, 65536 )
