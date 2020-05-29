@@ -6,9 +6,8 @@
 [node name="World" type="Node2D"]
 script = ExtResource( 2 )
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera" type="Camera2D" parent="."]
 current = true
-zoom = Vector2( 0.25, 0.25 )
 
 [node name="EditorGhost" type="TileMap" parent="."]
 modulate = Color( 1, 1, 1, 0.498039 )

@@ -52,6 +52,11 @@ onready var tiles := [
 var selected_tile: Vector2
 var selected_component: int
 var selected_direction: int = Direction.NORTH
+var pan_speed := 800.0
+var zoom_speed := 2.0
+var zoom_step := 0.2
+var current_pan := Vector2(0, 0)
+var current_zoom := 0.0
 
 func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
@@ -74,20 +79,35 @@ func select_component(component: int) -> void:
 func select_direction(direction: int) -> void:
 	selected_direction = direction
 	update_ghost()
+	
+func _process(delta: float) -> void:
+	$Camera.offset += (delta * pan_speed) * (current_pan * $Camera.zoom)
+	$Camera.zoom *= 1.0 + delta * zoom_speed * current_zoom
 
-func _input(event):
-	print(event)
+func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		select_tile($Components.world_to_map($Components.get_local_mouse_position()))
 	elif event.is_action_pressed("ui_left"):
-		select_tile(selected_tile + Vector2(-1, 0))
+		select_tile(selected_tile + Vector2.LEFT)
 	elif event.is_action_pressed("ui_right"):
-		select_tile(selected_tile + Vector2(1, 0))
+		select_tile(selected_tile + Vector2.RIGHT)
 	elif event.is_action_pressed("ui_up"):
-		select_tile(selected_tile + Vector2(0, -1))
+		select_tile(selected_tile + Vector2.UP)
 	elif event.is_action_pressed("ui_down"):
-		select_tile(selected_tile + Vector2(0, 1))
+		select_tile(selected_tile + Vector2.DOWN)
 	elif event.is_action_pressed("ui_rotate_right"):
 		select_direction(rotate_right(selected_direction))
 	elif event.is_action_pressed("ui_rotate_left"):
 		select_direction(rotate_left(selected_direction))
+	elif event.is_action_pressed("ui_pan"):
+		pass #TODO mouse drag panning
+	elif event.is_action_pressed("ui_zoom_in"):
+		$Camera.zoom *= 1.0 / (1.0 + zoom_step)
+	elif event.is_action_pressed("ui_zoom_out"):
+		$Camera.zoom *= 1.0 + zoom_step
+	elif event.is_action("ui_pan_left") or event.is_action("ui_pan_right"):
+		current_pan.x = Input.get_action_strength("ui_pan_right") - Input.get_action_strength("ui_pan_left")
+	elif event.is_action("ui_pan_up") or event.is_action("ui_pan_down"):
+		current_pan.y = Input.get_action_strength("ui_pan_down") - Input.get_action_strength("ui_pan_up")
+	elif event.is_action("ui_zoom_in_axis") or event.is_action("ui_zoom_out_axis"):
+		current_zoom = Input.get_action_strength("ui_zoom_out_axis") - Input.get_action_strength("ui_zoom_in_axis")
