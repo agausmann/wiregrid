@@ -1,0 +1,12 @@
+[package]
+publish = false
+name = "simulation"
+version = "0.1.0"
+authors = ["Adam Gausmann <agausmann@fastmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+gdnative = "0.8.0"
