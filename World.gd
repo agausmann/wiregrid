@@ -50,7 +50,7 @@ onready var tiles := [
 ]
 
 var selected_tile: Vector2
-var selected_component: int
+var selected_component: int = Component.INVERTER
 var selected_direction: int = Direction.NORTH
 var pan_speed := 800.0
 var zoom_speed := 2.0
@@ -63,42 +63,28 @@ func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, 
 	var flip_y = direction in [Direction.WEST, Direction.SOUTH]
 	var transpose = direction in [Direction.EAST, Direction.WEST]
 	tilemap.set_cellv(cell, tiles[component][state], flip_x, flip_y, transpose)
-
-func update_ghost() -> void:
-	$EditorGhost.clear()
-	set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
-	
-func select_tile(tile: Vector2) -> void:
-	selected_tile = tile
-	update_ghost()
-	
-func select_component(component: int) -> void:
-	selected_component = component
-	update_ghost()
-	
-func select_direction(direction: int) -> void:
-	selected_direction = direction
-	update_ghost()
 	
 func _process(delta: float) -> void:
 	$Camera.offset += (delta * pan_speed) * (current_pan * $Camera.zoom)
 	$Camera.zoom *= 1.0 + delta * zoom_speed * current_zoom
+	$EditorGhost.clear()
+	set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		select_tile($Components.world_to_map($Components.get_local_mouse_position()))
+		selected_tile = $Components.world_to_map($Components.get_local_mouse_position())
 	elif event.is_action_pressed("ui_left"):
-		select_tile(selected_tile + Vector2.LEFT)
+		selected_tile += Vector2.LEFT
 	elif event.is_action_pressed("ui_right"):
-		select_tile(selected_tile + Vector2.RIGHT)
+		selected_tile += Vector2.RIGHT
 	elif event.is_action_pressed("ui_up"):
-		select_tile(selected_tile + Vector2.UP)
+		selected_tile += Vector2.UP
 	elif event.is_action_pressed("ui_down"):
-		select_tile(selected_tile + Vector2.DOWN)
+		selected_tile += Vector2.DOWN
 	elif event.is_action_pressed("ui_rotate_right"):
-		select_direction(rotate_right(selected_direction))
+		selected_direction = rotate_right(selected_direction)
 	elif event.is_action_pressed("ui_rotate_left"):
-		select_direction(rotate_left(selected_direction))
+		selected_direction = rotate_left(selected_direction)
 	elif event.is_action_pressed("ui_pan"):
 		pass #TODO mouse drag panning
 	elif event.is_action_pressed("ui_zoom_in"):
