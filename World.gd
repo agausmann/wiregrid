@@ -55,8 +55,10 @@ var selected_direction: int = Direction.NORTH
 var pan_speed := 800.0
 var zoom_speed := 2.0
 var zoom_step := 0.2
-var current_pan := Vector2(0, 0)
-var current_zoom := 0.0
+var current_pan := Vector2.ZERO
+var current_zoom := 1.0
+var pan_input := Vector2.ZERO
+var zoom_input := 0.0
 
 func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
@@ -65,8 +67,16 @@ func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, 
 	tilemap.set_cellv(cell, tiles[component][state], flip_x, flip_y, transpose)
 	
 func _process(delta: float) -> void:
-	$Camera.offset += (delta * pan_speed) * (current_pan * $Camera.zoom)
-	$Camera.zoom *= 1.0 + delta * zoom_speed * current_zoom
+	current_pan += (delta * pan_speed) * (pan_input / current_zoom)
+	current_zoom *= 1.0 + delta * zoom_speed * zoom_input
+	
+	var viewport = get_viewport()
+	viewport.canvas_transform = Transform2D(
+		Vector2(current_zoom, 0),
+		Vector2(0, current_zoom),
+		current_pan * Vector2(current_zoom, current_zoom) + viewport.size / Vector2(2.0, 2.0)
+	)
+	
 	$EditorGhost.clear()
 	set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
 
@@ -88,12 +98,12 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("pan"):
 		pass #TODO mouse drag panning
 	elif event.is_action_pressed("zoom_in"):
-		$Camera.zoom *= 1.0 / (1.0 + zoom_step)
+		current_zoom *= 1.0 + zoom_step
 	elif event.is_action_pressed("zoom_out"):
-		$Camera.zoom *= 1.0 + zoom_step
+		current_zoom *= 1.0 / (1.0 + zoom_step)
 	elif event.is_action("pan_left") or event.is_action("pan_right"):
-		current_pan.x = Input.get_action_strength("pan_right") - Input.get_action_strength("pan_left")
+		pan_input.x = Input.get_action_strength("pan_left") - Input.get_action_strength("pan_right")
 	elif event.is_action("pan_up") or event.is_action("pan_down"):
-		current_pan.y = Input.get_action_strength("pan_down") - Input.get_action_strength("pan_up")
+		pan_input.y = Input.get_action_strength("pan_up") - Input.get_action_strength("pan_down")
 	elif event.is_action("zoom_in_axis") or event.is_action("zoom_out_axis"):
-		current_zoom = Input.get_action_strength("zoom_out_axis") - Input.get_action_strength("zoom_in_axis")
+		zoom_input = Input.get_action_strength("zoom_in_axis") - Input.get_action_strength("zoom_out_axis")
