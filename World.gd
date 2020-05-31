@@ -7,16 +7,14 @@ enum Component {
 	SWITCH, BUTTON, BLOTTER, INVERTER, LAMP, WIRE1, WIRE2A, WIRE2B, WIRE3,
 	WIRE4, WIRE_CROSS,
 }
-enum Direction {
-	NORTH,
-	EAST,
-	SOUTH,
-	WEST,
+enum Direction { NORTH, EAST, SOUTH, WEST }
+enum CursorMode {
+	FREE, PAN, WIRE_PLACE, WIRE_DELETE, COMPONENT_PLACE, COMPONENT_DELETE,
 }
 
 func rotate_right(direction: int) -> int:
 	return (direction + 1) % 4
-	
+
 func rotate_left(direction: int) -> int:
 	return (direction + 3) % 4
 
@@ -59,6 +57,7 @@ var current_pan := Vector2.ZERO
 var current_zoom := 1.0
 var pan_input := Vector2.ZERO
 var zoom_input := 0.0
+var cursor_mode: int = CursorMode.FREE
 
 func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
@@ -74,15 +73,22 @@ func _process(delta: float) -> void:
 	viewport.canvas_transform = Transform2D(
 		Vector2(current_zoom, 0),
 		Vector2(0, current_zoom),
-		current_pan * Vector2(current_zoom, current_zoom) + viewport.size / Vector2(2.0, 2.0)
+		current_pan * Vector2(current_zoom, current_zoom)
+			+ viewport.size / Vector2(2.0, 2.0)
 	)
 	
-	$EditorGhost.clear()
-	set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
+	if cursor_mode == CursorMode.FREE:
+		$EditorGhost.clear()
+		set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
+	elif cursor_mode == CursorMode.PAN:
+		$EditorGhost.clear()
+		
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		selected_tile = $Components.world_to_map($Components.get_local_mouse_position())
+		if cursor_mode == CursorMode.PAN:
+			current_pan += event.relative / Vector2(current_zoom, current_zoom)
 	elif event.is_action_pressed("cursor_left"):
 		selected_tile += Vector2.LEFT
 	elif event.is_action_pressed("cursor_right"):
@@ -96,7 +102,11 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("rotate_left"):
 		selected_direction = rotate_left(selected_direction)
 	elif event.is_action_pressed("pan"):
-		pass #TODO mouse drag panning
+		if cursor_mode == CursorMode.FREE:
+			cursor_mode = CursorMode.PAN
+	elif event.is_action_released("pan"):
+		if cursor_mode == CursorMode.PAN:
+			cursor_mode = CursorMode.FREE
 	elif event.is_action_pressed("zoom_in"):
 		current_zoom *= 1.0 + zoom_step
 	elif event.is_action_pressed("zoom_out"):
