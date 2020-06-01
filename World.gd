@@ -58,12 +58,27 @@ var current_zoom := 1.0
 var pan_input := Vector2.ZERO
 var zoom_input := 0.0
 var cursor_mode: int = CursorMode.FREE
+var painted = {}
 
-func set_component(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
+func set_tile(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
 	var flip_y = direction in [Direction.WEST, Direction.SOUTH]
 	var transpose = direction in [Direction.EAST, Direction.WEST]
 	tilemap.set_cellv(cell, tiles[component][state], flip_x, flip_y, transpose)
+	
+func copy_tile(src: TileMap, dst: TileMap, cell: Vector2) -> void:
+	var x := int(cell.x)
+	var y := int(cell.y)
+	dst.set_cellv(
+		cell,
+		src.get_cellv(cell),
+		src.is_cell_x_flipped(x, y),
+		src.is_cell_y_flipped(x, y),
+		src.is_cell_transposed(x, y)
+	)
+
+func clear_tile(tilemap: TileMap, cell: Vector2) -> void:
+	tilemap.set_cellv(cell, -1)
 	
 func _process(delta: float) -> void:
 	current_pan += (delta * pan_speed) * (pan_input / current_zoom)
@@ -79,10 +94,18 @@ func _process(delta: float) -> void:
 	
 	if cursor_mode == CursorMode.FREE:
 		$EditorGhost.clear()
-		set_component($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
+		set_tile($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
 	elif cursor_mode == CursorMode.PAN:
 		$EditorGhost.clear()
-		
+	elif cursor_mode == CursorMode.COMPONENT_PLACE:
+		if not painted.has(selected_tile):
+			painted[selected_tile] = null
+			set_tile($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
+	elif cursor_mode == CursorMode.COMPONENT_DELETE:
+		if not painted.has(selected_tile):
+			painted[selected_tile] = null
+			copy_tile($Components, $EditorGhost, selected_tile)
+			clear_tile($Components, selected_tile)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -117,3 +140,19 @@ func _input(event: InputEvent) -> void:
 		pan_input.y = Input.get_action_strength("pan_up") - Input.get_action_strength("pan_down")
 	elif event.is_action("zoom_in_axis") or event.is_action("zoom_out_axis"):
 		zoom_input = Input.get_action_strength("zoom_in_axis") - Input.get_action_strength("zoom_out_axis")
+	elif event.is_action_pressed("primary"):
+		if cursor_mode == CursorMode.FREE:
+			cursor_mode = CursorMode.COMPONENT_PLACE
+			painted.clear()
+	elif event.is_action_released("primary"):
+		if cursor_mode == CursorMode.COMPONENT_PLACE:
+			cursor_mode = CursorMode.FREE
+			for cell in painted.keys():
+				set_tile($Components, cell, selected_component, State.OFF, selected_direction)
+	elif event.is_action_pressed("secondary"):
+		if cursor_mode == CursorMode.FREE:
+			cursor_mode = CursorMode.COMPONENT_DELETE
+			painted.clear()
+	elif event.is_action_released("secondary"):
+		if cursor_mode == CursorMode.COMPONENT_DELETE:
+			cursor_mode = CursorMode.FREE
