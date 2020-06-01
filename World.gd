@@ -58,7 +58,8 @@ var current_zoom := 1.0
 var pan_input := Vector2.ZERO
 var zoom_input := 0.0
 var cursor_mode: int = CursorMode.FREE
-var painted = {}
+var painted := {}
+var previous_tile = null
 
 func set_tile(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
@@ -80,6 +81,33 @@ func copy_tile(src: TileMap, dst: TileMap, cell: Vector2) -> void:
 func clear_tile(tilemap: TileMap, cell: Vector2) -> void:
 	tilemap.set_cellv(cell, -1)
 	
+func bresenham(src: Vector2, dst: Vector2) -> Array:
+	if dst.x < src.x:
+		return bresenham(dst, src)
+		
+	var delta := dst - src
+	var delta_error := abs(delta.y / delta.x) if delta.x != 0 else INF
+	if delta_error > 1:
+		var transposed := bresenham(Vector2(src.y, src.x), Vector2(dst.y, dst.x))
+		var result := []
+		for v in transposed:
+			result.append(Vector2(v.y, v.x))
+		return result
+	
+	var result := []
+	var error := 0.0
+	var x := int(round(src.x))
+	var y := int(round(src.y))
+	while x <= dst.x:
+		result.append(Vector2(x, y))
+		error = error + delta_error
+		if error >= 0.5:
+			y += int(sign(delta.y) * 1)
+			error -= 1.0
+		x += 1
+	
+	return result
+
 func _process(delta: float) -> void:
 	current_pan += (delta * pan_speed) * (pan_input / current_zoom)
 	current_zoom *= 1.0 + delta * zoom_speed * zoom_input
@@ -98,14 +126,20 @@ func _process(delta: float) -> void:
 	elif cursor_mode == CursorMode.PAN:
 		$EditorGhost.clear()
 	elif cursor_mode == CursorMode.COMPONENT_PLACE:
-		if not painted.has(selected_tile):
-			painted[selected_tile] = null
-			set_tile($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
+		if selected_tile != previous_tile:
+			for tile in bresenham(previous_tile, selected_tile):
+				if not painted.has(tile):
+					painted[tile] = null
+					set_tile($EditorGhost, tile, selected_component, State.OFF, selected_direction)
+			previous_tile = selected_tile
 	elif cursor_mode == CursorMode.COMPONENT_DELETE:
-		if not painted.has(selected_tile):
-			painted[selected_tile] = null
-			copy_tile($Components, $EditorGhost, selected_tile)
-			clear_tile($Components, selected_tile)
+		if selected_tile != previous_tile:
+			for tile in bresenham(previous_tile, selected_tile):
+				if not painted.has(tile):
+					painted[tile] = null
+					copy_tile($Components, $EditorGhost, tile)
+					clear_tile($Components, tile)
+			previous_tile = selected_tile
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -143,7 +177,8 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("primary"):
 		if cursor_mode == CursorMode.FREE:
 			cursor_mode = CursorMode.COMPONENT_PLACE
-			painted.clear()
+			painted = { selected_tile: null }
+			previous_tile = selected_tile
 	elif event.is_action_released("primary"):
 		if cursor_mode == CursorMode.COMPONENT_PLACE:
 			cursor_mode = CursorMode.FREE
@@ -152,7 +187,9 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("secondary"):
 		if cursor_mode == CursorMode.FREE:
 			cursor_mode = CursorMode.COMPONENT_DELETE
-			painted.clear()
+			clear_tile($Components, selected_tile)
+			painted = { selected_tile: null }
+			previous_tile = selected_tile
 	elif event.is_action_released("secondary"):
 		if cursor_mode == CursorMode.COMPONENT_DELETE:
 			cursor_mode = CursorMode.FREE
