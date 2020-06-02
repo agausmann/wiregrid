@@ -300,10 +300,12 @@ func _process(delta: float) -> void:
 	viewport.canvas_transform = Transform2D(
 		Vector2(current_zoom, 0),
 		Vector2(0, current_zoom),
-		current_pan * Vector2(current_zoom, current_zoom)
-			+ viewport.size / Vector2(2.0, 2.0)
+		current_pan * current_zoom
+			+ viewport.size / 2
 	)
 	mode.process(delta)
+	$Background.offset = ((-current_pan - viewport.size / (2 * current_zoom)) / 16).floor() * 16
+	$Background.region_rect = Rect2(Vector2.ZERO, viewport.size / current_zoom + Vector2(16, 16))
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
