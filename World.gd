@@ -8,22 +8,118 @@ enum Component {
 	WIRE4, WIRE_CROSS,
 }
 enum Direction { NORTH, EAST, SOUTH, WEST }
-enum CursorMode {
-	FREE, PAN, WIRE_PLACE, WIRE_DELETE, COMPONENT_PLACE, COMPONENT_DELETE,
-}
 
-func rotate_right(direction: int) -> int:
-	return (direction + 1) % 4
-
-func rotate_left(direction: int) -> int:
-	return (direction + 3) % 4
-
-func load_tiles(name: String) -> Array:
-	return [
-		$Components.tile_set.find_tile_by_name(name + "_off"),
-		$Components.tile_set.find_tile_by_name(name + "_on"),
-	]
+class Mode:
+	var world
 	
+	func _init(w) -> void:
+		self.world = w
+	
+	func process(_delta: float) -> void: pass
+	func input(_event: InputEvent) -> void: pass
+	func finish() -> void: pass
+	func cancel() -> void: pass
+	
+class Normal extends Mode:
+	func _init(w).(w) -> void: pass
+	
+	func process(_delta: float) -> void:
+		world.get_node("EditorGhost").clear()
+		world.set_tile(world.get_node("EditorGhost"), world.selected_tile, world.selected_component, State.OFF, world.selected_direction)
+
+class Pan extends Mode:
+	func _init(w).(w) -> void: pass
+	
+	func process(_delta: float) -> void:
+		world.get_node("EditorGhost").clear()
+	
+	func input(event: InputEvent) -> void:
+		if event is InputEventMouseMotion:
+			var zoom_v := Vector2(world.current_zoom, world.current_zoom)
+			world.current_pan += event.relative / zoom_v
+
+class PaintMode extends Mode:
+	var painted := {}
+	var previous_tile: Vector2
+	
+	func _init(w).(w) -> void:
+		painted[world.selected_tile] = null
+		previous_tile = world.selected_tile
+	
+	func process(_delta: float) -> void:
+		if world.selected_tile != previous_tile:
+			for tile in bresenham(previous_tile, world.selected_tile):
+				if not painted.has(tile):
+					painted[tile] = null
+			previous_tile = world.selected_tile
+	
+	func bresenham(src: Vector2, dst: Vector2) -> Array:
+		if dst.x < src.x:
+			return bresenham(dst, src)
+			
+		var delta := dst - src
+		var delta_error := abs(delta.y / delta.x) if delta.x != 0 else INF
+		if delta_error > 1:
+			var transposed := bresenham(Vector2(src.y, src.x), Vector2(dst.y, dst.x))
+			var result := []
+			for v in transposed:
+				result.append(Vector2(v.y, v.x))
+			return result
+		
+		var result := []
+		var error := 0.0
+		var x := int(round(src.x))
+		var y := int(round(src.y))
+		while x <= dst.x:
+			result.append(Vector2(x, y))
+			error = error + delta_error
+			if error >= 0.5:
+				y += int(sign(delta.y) * 1)
+				error -= 1.0
+			x += 1
+		
+		return result
+
+class PlaceComponent extends PaintMode:
+	func _init(w).(w) -> void:
+		world.get_node("EditorGhost").clear()
+	
+	func process(delta: float) -> void:
+		.process(delta)
+		var ghost = world.get_node("EditorGhost")
+		for tile in painted:
+			if ghost.get_cellv(tile) == TileMap.INVALID_CELL:
+				world.set_tile(ghost, tile, world.selected_component, State.OFF, world.selected_direction)
+	
+	func finish() -> void:
+		for tile in painted:
+			world.place_component(tile, world.selected_component, world.selected_direction)
+
+class RemoveComponent extends PaintMode:
+	func _init(w).(w) -> void:
+		world.get_node("EditorGhost").clear()
+	
+	func process(delta: float) -> void:
+		.process(delta)
+		var ghost = world.get_node("EditorGhost")
+		var components = world.get_node("Components")
+		for tile in painted:
+			if components.get_cellv(tile) != TileMap.INVALID_CELL:
+				world.copy_tile(components, ghost, tile)
+				components.set_cellv(tile, -1)
+	
+	func finish() -> void:
+		.finish()
+		for tile in painted:
+			world.remove_component(tile)
+	
+	func cancel() -> void:
+		.cancel()
+		var ghost = world.get_node("EditorGhost")
+		var components = world.get_node("Components")
+		for tile in painted:
+			world.copy_tile(ghost, components, tile)
+
 onready var tiles := [
 	load_tiles("switch"),
 	load_tiles("button"),
@@ -55,11 +151,31 @@ var zoom_speed := 2.0
 var zoom_step := 0.2
 var current_pan := Vector2.ZERO
 var current_zoom := 1.0
-var pan_input := Vector2.ZERO
-var zoom_input := 0.0
-var cursor_mode: int = CursorMode.FREE
 var painted := {}
 var previous_tile = null
+var pan_input := Vector2.ZERO
+var zoom_input := 0.0
+var mode: Mode = Normal.new(self)
+
+func rotate_right(direction: int) -> int:
+	return (direction + 1) % 4
+
+func rotate_left(direction: int) -> int:
+	return (direction + 3) % 4
+
+func load_tiles(name: String) -> Array:
+	return [
+		$Components.tile_set.find_tile_by_name(name + "_off"),
+		$Components.tile_set.find_tile_by_name(name + "_on"),
+	]
+
+func change_mode(new_mode: Mode) -> void:
+	mode.cancel()
+	mode = new_mode
+
+func finish_mode() -> void:
+	mode.finish()
+	mode = Normal.new(self)
 
 func set_tile(tilemap: TileMap, cell: Vector2, component: int, state: int, direction: int) -> void:
 	var flip_x = direction in [Direction.EAST, Direction.SOUTH]
@@ -81,32 +197,11 @@ func copy_tile(src: TileMap, dst: TileMap, cell: Vector2) -> void:
 func clear_tile(tilemap: TileMap, cell: Vector2) -> void:
 	tilemap.set_cellv(cell, -1)
 	
-func bresenham(src: Vector2, dst: Vector2) -> Array:
-	if dst.x < src.x:
-		return bresenham(dst, src)
-		
-	var delta := dst - src
-	var delta_error := abs(delta.y / delta.x) if delta.x != 0 else INF
-	if delta_error > 1:
-		var transposed := bresenham(Vector2(src.y, src.x), Vector2(dst.y, dst.x))
-		var result := []
-		for v in transposed:
-			result.append(Vector2(v.y, v.x))
-		return result
-	
-	var result := []
-	var error := 0.0
-	var x := int(round(src.x))
-	var y := int(round(src.y))
-	while x <= dst.x:
-		result.append(Vector2(x, y))
-		error = error + delta_error
-		if error >= 0.5:
-			y += int(sign(delta.y) * 1)
-			error -= 1.0
-		x += 1
-	
-	return result
+func place_component(cell: Vector2, component: int, direction: int) -> void:
+	set_tile($Components, cell, component, State.OFF, direction)
+
+func remove_component(cell: Vector2) -> void:
+	$Components.set_cellv(cell, -1)
 
 func _process(delta: float) -> void:
 	current_pan += (delta * pan_speed) * (pan_input / current_zoom)
@@ -119,33 +214,11 @@ func _process(delta: float) -> void:
 		current_pan * Vector2(current_zoom, current_zoom)
 			+ viewport.size / Vector2(2.0, 2.0)
 	)
-	
-	if cursor_mode == CursorMode.FREE:
-		$EditorGhost.clear()
-		set_tile($EditorGhost, selected_tile, selected_component, State.OFF, selected_direction)
-	elif cursor_mode == CursorMode.PAN:
-		$EditorGhost.clear()
-	elif cursor_mode == CursorMode.COMPONENT_PLACE:
-		if selected_tile != previous_tile:
-			for tile in bresenham(previous_tile, selected_tile):
-				if not painted.has(tile):
-					painted[tile] = null
-					set_tile($EditorGhost, tile, selected_component, State.OFF, selected_direction)
-			previous_tile = selected_tile
-	elif cursor_mode == CursorMode.COMPONENT_DELETE:
-		if selected_tile != previous_tile:
-			for tile in bresenham(previous_tile, selected_tile):
-				if not painted.has(tile):
-					painted[tile] = null
-					copy_tile($Components, $EditorGhost, tile)
-					clear_tile($Components, tile)
-			previous_tile = selected_tile
+	mode.process(delta)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		selected_tile = $Components.world_to_map($Components.get_local_mouse_position())
-		if cursor_mode == CursorMode.PAN:
-			current_pan += event.relative / Vector2(current_zoom, current_zoom)
 	elif event.is_action_pressed("cursor_left"):
 		selected_tile += Vector2.LEFT
 	elif event.is_action_pressed("cursor_right"):
@@ -159,11 +232,11 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("rotate_left"):
 		selected_direction = rotate_left(selected_direction)
 	elif event.is_action_pressed("pan"):
-		if cursor_mode == CursorMode.FREE:
-			cursor_mode = CursorMode.PAN
+		if mode is Normal:
+			change_mode(Pan.new(self))
 	elif event.is_action_released("pan"):
-		if cursor_mode == CursorMode.PAN:
-			cursor_mode = CursorMode.FREE
+		if mode is Pan:
+			finish_mode()
 	elif event.is_action_pressed("zoom_in"):
 		current_zoom *= 1.0 + zoom_step
 	elif event.is_action_pressed("zoom_out"):
@@ -175,21 +248,16 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action("zoom_in_axis") or event.is_action("zoom_out_axis"):
 		zoom_input = Input.get_action_strength("zoom_in_axis") - Input.get_action_strength("zoom_out_axis")
 	elif event.is_action_pressed("primary"):
-		if cursor_mode == CursorMode.FREE:
-			cursor_mode = CursorMode.COMPONENT_PLACE
-			painted = { selected_tile: null }
-			previous_tile = selected_tile
+		if mode is Normal:
+			change_mode(PlaceComponent.new(self))
 	elif event.is_action_released("primary"):
-		if cursor_mode == CursorMode.COMPONENT_PLACE:
-			cursor_mode = CursorMode.FREE
-			for cell in painted.keys():
-				set_tile($Components, cell, selected_component, State.OFF, selected_direction)
+		if mode is PlaceComponent:
+			finish_mode()
 	elif event.is_action_pressed("secondary"):
-		if cursor_mode == CursorMode.FREE:
-			cursor_mode = CursorMode.COMPONENT_DELETE
-			clear_tile($Components, selected_tile)
-			painted = { selected_tile: null }
-			previous_tile = selected_tile
+		if mode is Normal:
+			change_mode(RemoveComponent.new(self))
 	elif event.is_action_released("secondary"):
-		if cursor_mode == CursorMode.COMPONENT_DELETE:
-			cursor_mode = CursorMode.FREE
+		if mode is RemoveComponent:
+			finish_mode()
+	
+	mode.input(event)
