@@ -87,9 +87,16 @@ class BoxMode extends Mode:
 	func _init(w).(w) -> void:
 		start_tile = world.selected_tile
 		end_tile = world.selected_tile
+		var box = world.get_node("SelectionBox")
+		box.visible = true
+		box.rect = Rect2(world.get_local_mouse_position(), Vector2.ZERO)
 	
 	func process(_delta: float) -> void:
 		end_tile = world.selected_tile
+	
+	func input(event: InputEvent) -> void:
+		if event is InputEventMouseMotion:
+			world.get_node("SelectionBox").rect.end = world.get_local_mouse_position()
 	
 	func selected_tiles(start: Vector2=start_tile, end: Vector2=end_tile) -> Array:
 		var result := []
@@ -97,9 +104,16 @@ class BoxMode extends Mode:
 			for x in range(min(start.x, end.x), max(start.x, end.x) + 1):
 				result.append(Vector2(x, y))
 		return result
+	
+	func finish() -> void:
+		world.get_node("SelectionBox").visible = false
+	
+	func cancel() -> void:
+		world.get_node("SelectionBox").visible = false
 
 class LineMode extends BoxMode:
-	func _init(w).(w) -> void: pass
+	func _init(w).(w) -> void:
+		world.get_node("SelectionBox").visible = false
 	
 	func process(_delta: float) -> void:
 		end_tile = world.selected_tile
@@ -340,11 +354,11 @@ func _input(event: InputEvent) -> void:
 		zoom_input = Input.get_action_strength("zoom_in_axis") - Input.get_action_strength("zoom_out_axis")
 	elif event.is_action_pressed("primary"):
 		if mode is Normal:
-			#change_mode(PlaceComponent.new(self))
-			change_mode(PlaceWire.new(self))
+			change_mode(PlaceComponent.new(self))
+			#change_mode(PlaceWire.new(self))
 	elif event.is_action_released("primary"):
-		#if mode is PlaceComponent:
-		if mode is PlaceWire:
+		if mode is PlaceComponent:
+		#if mode is PlaceWire:
 			finish_mode()
 	elif event.is_action_pressed("secondary"):
 		if mode is Normal:
