@@ -19,7 +19,7 @@ class Mode:
 	func input(_event: InputEvent) -> void: pass
 	func finish() -> void: pass
 	func cancel() -> void: pass
-	
+
 class Normal extends Mode:
 	func _init(w).(w) -> void: pass
 	
@@ -80,44 +80,84 @@ class PaintMode extends Mode:
 		
 		return result
 
-class PlaceComponent extends PaintMode:
+class BoxMode extends Mode:
+	var start_tile: Vector2
+	var end_tile: Vector2
+	
 	func _init(w).(w) -> void:
-		world.get_node("EditorGhost").clear()
+		start_tile = world.selected_tile
+		end_tile = world.selected_tile
+	
+	func process(_delta: float) -> void:
+		end_tile = world.selected_tile
+	
+	func selected_tiles(start: Vector2=start_tile, end: Vector2=end_tile) -> Array:
+		var result := []
+		for y in range(min(start.y, end.y), max(start.y, end.y) + 1):
+			for x in range(min(start.x, end.x), max(start.x, end.x) + 1):
+				result.append(Vector2(x, y))
+		return result
+
+class LineMode extends BoxMode:
+	func _init(w).(w) -> void: pass
+	
+	func process(_delta: float) -> void:
+		end_tile = world.selected_tile
+		var line_delta := end_tile - start_tile
+		if abs(line_delta.x) < abs(line_delta.y):
+			end_tile.x = start_tile.x
+		else:
+			end_tile.y = start_tile.y
+
+class PlaceComponent extends LineMode:
+	func _init(w).(w) -> void: pass
 	
 	func process(delta: float) -> void:
 		.process(delta)
 		var ghost = world.get_node("EditorGhost")
-		for tile in painted:
-			if ghost.get_cellv(tile) == TileMap.INVALID_CELL:
-				world.set_tile(ghost, tile, world.selected_component, State.OFF, world.selected_direction)
+		ghost.clear()
+		for tile in selected_tiles():
+			world.set_tile(ghost, tile, world.selected_component, State.OFF, world.selected_direction)
 	
 	func finish() -> void:
-		for tile in painted:
+		for tile in selected_tiles():
 			world.place_component(tile, world.selected_component, world.selected_direction)
 
-class RemoveComponent extends PaintMode:
+class RemoveComponent extends BoxMode:
+	var old_end: Vector2
+	
 	func _init(w).(w) -> void:
-		world.get_node("EditorGhost").clear()
+		old_end = end_tile
+		var ghost = world.get_node("EditorGhost")
+		var components = world.get_node("Components")
+		ghost.clear()
+		for tile in selected_tiles():
+			world.copy_tile(components, ghost, tile)
+			components.set_cellv(tile, -1)
 	
 	func process(delta: float) -> void:
 		.process(delta)
 		var ghost = world.get_node("EditorGhost")
 		var components = world.get_node("Components")
-		for tile in painted:
-			if components.get_cellv(tile) != TileMap.INVALID_CELL:
+		if end_tile != old_end:
+			for tile in selected_tiles(start_tile, old_end):
+				world.copy_tile(ghost, components, tile)
+			ghost.clear()
+			for tile in selected_tiles():
 				world.copy_tile(components, ghost, tile)
 				components.set_cellv(tile, -1)
+			old_end = end_tile
 	
 	func finish() -> void:
 		.finish()
-		for tile in painted:
+		for tile in selected_tiles():
 			world.remove_component(tile)
 	
 	func cancel() -> void:
 		.cancel()
 		var ghost = world.get_node("EditorGhost")
 		var components = world.get_node("Components")
-		for tile in painted:
+		for tile in selected_tiles():
 			world.copy_tile(ghost, components, tile)
 
 onready var tiles := [
