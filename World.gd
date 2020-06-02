@@ -160,6 +160,46 @@ class RemoveComponent extends BoxMode:
 		for tile in selected_tiles():
 			world.copy_tile(ghost, components, tile)
 
+class PlaceWire extends LineMode:
+	func _init(w).(w) -> void: pass
+	
+	func process(delta: float) -> void:
+		.process(delta)
+		var line_delta := end_tile - start_tile
+		var direction: int
+		if abs(line_delta.x) > abs(line_delta.y):
+			direction = Direction.EAST
+		else:
+			direction = Direction.SOUTH
+			
+		var ghost = world.get_node("EditorGhost")
+		ghost.clear()
+		var selected_tiles := selected_tiles()
+		if len(selected_tiles) > 1:
+			world.set_tile(ghost, selected_tiles[0], Component.WIRE1, State.OFF, direction)
+			world.set_tile(ghost, selected_tiles[-1], Component.WIRE1, State.OFF, world.opposite(direction))
+			for tile in selected_tiles.slice(1, -2):
+				world.set_tile(ghost, tile, Component.WIRE2B, State.OFF, direction)
+	
+	func finish() -> void:
+		.finish()
+		var selected_tiles := selected_tiles()
+		if len(selected_tiles) <= 1:
+			return
+		var line_delta := end_tile - start_tile
+		var directions: Array
+		if abs(line_delta.x) > abs(line_delta.y):
+			directions = [Direction.EAST, Direction.WEST]
+		else:
+			directions = [Direction.SOUTH, Direction.NORTH]
+		world.place_wire(selected_tiles[0], [directions[0]])
+		world.place_wire(selected_tiles[-1], [directions[1]])
+		for tile in selected_tiles.slice(1, -2):
+			world.place_wire(tile, directions, false)
+
+class RemoveWire extends Mode:
+	func _init(w).(w) -> void: pass
+
 onready var tiles := [
 	load_tiles("switch"),
 	load_tiles("button"),
@@ -199,6 +239,9 @@ var mode: Mode = Normal.new(self)
 
 func rotate_right(direction: int) -> int:
 	return (direction + 1) % 4
+
+func opposite(direction: int) -> int:
+	return (direction + 2) % 4
 
 func rotate_left(direction: int) -> int:
 	return (direction + 3) % 4
@@ -242,6 +285,12 @@ func place_component(cell: Vector2, component: int, direction: int) -> void:
 
 func remove_component(cell: Vector2) -> void:
 	$Components.set_cellv(cell, -1)
+
+func place_wire(cell: Vector2, directions: Array, cross_connect: bool=false) -> void:
+	pass
+
+func remove_wire(cell: Vector2, directions: Array) -> void:
+	pass
 
 func _process(delta: float) -> void:
 	current_pan += (delta * pan_speed) * (pan_input / current_zoom)
@@ -289,9 +338,11 @@ func _input(event: InputEvent) -> void:
 		zoom_input = Input.get_action_strength("zoom_in_axis") - Input.get_action_strength("zoom_out_axis")
 	elif event.is_action_pressed("primary"):
 		if mode is Normal:
-			change_mode(PlaceComponent.new(self))
+			#change_mode(PlaceComponent.new(self))
+			change_mode(PlaceWire.new(self))
 	elif event.is_action_released("primary"):
-		if mode is PlaceComponent:
+		#if mode is PlaceComponent:
+		if mode is PlaceWire:
 			finish_mode()
 	elif event.is_action_pressed("secondary"):
 		if mode is Normal:
