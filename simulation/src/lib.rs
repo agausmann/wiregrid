@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem::swap;
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 #[derive(NativeClass)]
 #[inherit(Reference)]
@@ -19,22 +20,28 @@ impl Simulation {
     }
 
     #[export]
-    fn step(&mut self, _owner: Reference) {
+    fn set_tick_rate(&self, _owner: Reference, tick_rate: f32) {
+        self.manager.set_tick_rate(tick_rate);
+    }
+
+    #[export]
+    fn step(&self, _owner: Reference) {
         self.manager.step();
     }
 
     #[export]
-    fn start(&mut self, _owner: Reference) {
+    fn start(&self, _owner: Reference) {
         self.manager.start();
     }
 
     #[export]
-    fn stop(&mut self, _owner: Reference) {
+    fn stop(&self, _owner: Reference) {
         self.manager.stop();
     }
 }
 
 enum Command {
+    TickRate(f32),
     Step,
     Start,
     Stop,
@@ -55,6 +62,10 @@ impl Manager {
         }
     }
 
+    fn set_tick_rate(&self, tick_rate: f32) {
+        self.command_tx.send(Command::TickRate(tick_rate)).ok();
+    }
+
     fn step(&self) {
         self.command_tx.send(Command::Step).ok();
     }
@@ -70,7 +81,8 @@ impl Manager {
 
 struct Runner {
     command_rx: mpsc::Receiver<Command>,
-    running: bool,
+    tick_period: Duration,
+    next_tick: Option<Instant>,
     state: State,
     current: UpdateBuffer,
     next: UpdateBuffer,
@@ -80,11 +92,16 @@ impl Runner {
     fn new(command_rx: mpsc::Receiver<Command>) -> Runner {
         Runner {
             command_rx,
-            running: false,
+            tick_period: Duration::from_millis(10),
+            next_tick: None,
             state: State::new(),
             current: UpdateBuffer::new(),
             next: UpdateBuffer::new(),
         }
+    }
+
+    fn is_running(&self) -> bool {
+        self.next_tick.is_some()
     }
 
     fn step(&mut self) {
@@ -94,30 +111,40 @@ impl Runner {
     }
 
     fn run(&mut self) {
-        loop {
-            let command = if self.running {
-                self.command_rx.try_recv()
-            } else {
-                self.command_rx.recv().map_err(Into::into)
-            };
-            match command {
-                Ok(Command::Step) => {
-                    self.step();
+        'main: loop {
+            if let Some(next_tick) = self.next_tick {
+                if let Some(remaining_time) = next_tick.checked_duration_since(Instant::now()) {
+                    thread::sleep(remaining_time);
                 }
-                Ok(Command::Start) => {
-                    self.running = true;
-                }
-                Ok(Command::Stop) => {
-                    self.running = false;
-                }
-                Ok(Command::Exit) | Err(TryRecvError::Disconnected) => {
-                    break;
-                }
-                Err(TryRecvError::Empty) => {}
-            }
-            if self.running {
                 self.step();
-                //TODO implement tickrate
+                self.next_tick = Some(next_tick + self.tick_period);
+            }
+            'recv: loop {
+                let command = if self.is_running() {
+                    self.command_rx.try_recv()
+                } else {
+                    self.command_rx.recv().map_err(Into::into)
+                };
+                match command {
+                    Ok(Command::TickRate(tick_rate)) => {
+                        self.tick_period = Duration::from_secs(1).div_f32(tick_rate);
+                    }
+                    Ok(Command::Step) => {
+                        self.step();
+                    }
+                    Ok(Command::Start) => {
+                        self.next_tick = Some(Instant::now());
+                    }
+                    Ok(Command::Stop) => {
+                        self.next_tick = None;
+                    }
+                    Ok(Command::Exit) | Err(TryRecvError::Disconnected) => {
+                        break 'main;
+                    }
+                    Err(TryRecvError::Empty) => {
+                        break 'recv;
+                    }
+                }
             }
         }
     }

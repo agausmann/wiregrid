@@ -252,6 +252,9 @@ var zoom_input := 0.0
 var mode: Mode = Normal.new(self)
 var simulation := Simulation.new()
 
+func _ready() -> void:
+	simulation.start()
+
 func rotate_right(direction: int) -> int:
 	return (direction + 1) % 4
 
