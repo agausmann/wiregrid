@@ -2,6 +2,7 @@ use gdnative::*;
 use std::collections::{HashMap, HashSet};
 use std::mem::swap;
 use std::sync::mpsc::{self, TryRecvError};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -17,6 +18,11 @@ impl Simulation {
         Simulation {
             manager: Manager::new(),
         }
+    }
+
+    #[export]
+    fn get_state(&self, _owner: Reference) -> Variant {
+        self.manager.state().to_variant()
     }
 
     #[export]
@@ -96,6 +102,7 @@ enum Command {
 
 struct Manager {
     command_tx: mpsc::Sender<Command>,
+    output: Arc<Mutex<Option<Vec<bool>>>>,
     _thread: JoinHandle<()>,
     atomic_buffer: Option<Vec<Command>>,
 }
@@ -103,11 +110,17 @@ struct Manager {
 impl Manager {
     fn new() -> Manager {
         let (command_tx, command_rx) = mpsc::channel();
+        let output = Arc::new(Mutex::new(None));
         Manager {
             command_tx,
-            _thread: thread::spawn(move || Runner::new(command_rx).run()),
+            output: Arc::clone(&output),
+            _thread: thread::spawn(move || Runner::new(command_rx, output).run()),
             atomic_buffer: None,
         }
+    }
+
+    fn state(&self) -> Option<Vec<bool>> {
+        self.output.lock().unwrap().take()
     }
 
     fn send(&mut self, command: Command) {
@@ -133,6 +146,7 @@ impl Manager {
 
 struct Runner {
     command_rx: mpsc::Receiver<Command>,
+    output: Arc<Mutex<Option<Vec<bool>>>>,
     tick_period: Duration,
     next_tick: Option<Instant>,
     state: State,
@@ -141,9 +155,10 @@ struct Runner {
 }
 
 impl Runner {
-    fn new(command_rx: mpsc::Receiver<Command>) -> Runner {
+    fn new(command_rx: mpsc::Receiver<Command>, output: Arc<Mutex<Option<Vec<bool>>>>) -> Runner {
         Runner {
             command_rx,
+            output,
             tick_period: Duration::from_millis(10),
             next_tick: None,
             state: State::new(),
@@ -160,6 +175,8 @@ impl Runner {
         self.state.apply(&self.current, &mut self.next);
         self.current.clear();
         swap(&mut self.current, &mut self.next);
+        let output = self.state.wires.iter().map(Wire::is_on).collect();
+        *self.output.lock().unwrap() = Some(output);
     }
 
     fn handle(&mut self, command: Command) {
