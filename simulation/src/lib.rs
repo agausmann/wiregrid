@@ -174,25 +174,25 @@ impl Runner {
                 self.current.reset(id);
             }
             Command::PlaceBlotter { in_id, out_id } => {
-                let input = &mut self.state.wires[in_id];
+                let input = self.state.wire(in_id);
                 if input.blotted.insert(out_id) && input.is_on() {
                     self.current.set(out_id);
                 }
             }
             Command::RemoveBlotter { in_id, out_id } => {
-                let input = &mut self.state.wires[in_id];
+                let input = self.state.wire(in_id);
                 if input.blotted.remove(&out_id) && input.is_on() {
                     self.current.reset(out_id);
                 }
             }
             Command::PlaceInverter { in_id, out_id } => {
-                let input = &mut self.state.wires[in_id];
+                let input = self.state.wire(in_id);
                 if input.inverted.insert(out_id) && !input.is_on() {
                     self.current.set(out_id);
                 }
             }
             Command::RemoveInverter { in_id, out_id } => {
-                let input = &mut self.state.wires[in_id];
+                let input = self.state.wire(in_id);
                 if input.inverted.remove(&out_id) && !input.is_on() {
                     self.current.reset(out_id);
                 }
@@ -252,9 +252,17 @@ impl State {
         State { wires: Vec::new() }
     }
 
+    fn wire(&mut self, id: usize) -> &mut Wire {
+        let min_len = id + 1;
+        if self.wires.len() < min_len {
+            self.wires.resize_with(min_len, Default::default);
+        }
+        &mut self.wires[id]
+    }
+
     fn apply(&mut self, current: &UpdateBuffer, next: &mut UpdateBuffer) {
         for (&wire_id, &delta) in &current.updates {
-            let wire = &mut self.wires[wire_id];
+            let wire = self.wire(wire_id);
             let old_state = wire.is_on();
             wire.input_count += delta;
             let new_state = wire.is_on();
@@ -275,6 +283,7 @@ impl State {
     }
 }
 
+#[derive(Default)]
 struct Wire {
     input_count: isize,
     blotted: HashSet<usize>,
