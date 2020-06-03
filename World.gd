@@ -250,6 +250,7 @@ var previous_tile = null
 var pan_input := Vector2.ZERO
 var zoom_input := 0.0
 var mode: Mode = Normal.new(self)
+var simulation := Simulation.new()
 
 func rotate_right(direction: int) -> int:
 	return (direction + 1) % 4
