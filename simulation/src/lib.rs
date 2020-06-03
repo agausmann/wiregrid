@@ -20,37 +20,84 @@ impl Simulation {
     }
 
     #[export]
-    fn set_tick_rate(&self, _owner: Reference, tick_rate: f32) {
-        self.manager.set_tick_rate(tick_rate);
+    fn set_tick_rate(&mut self, _owner: Reference, tick_rate: f32) {
+        self.manager.send(Command::TickRate { tick_rate });
     }
 
     #[export]
-    fn step(&self, _owner: Reference) {
-        self.manager.step();
+    fn set(&mut self, _owner: Reference, id: usize) {
+        self.manager.send(Command::Set { id });
     }
 
     #[export]
-    fn start(&self, _owner: Reference) {
-        self.manager.start();
+    fn reset(&mut self, _owner: Reference, id: usize) {
+        self.manager.send(Command::Reset { id });
     }
 
     #[export]
-    fn stop(&self, _owner: Reference) {
-        self.manager.stop();
+    fn place_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.manager.send(Command::PlaceBlotter { in_id, out_id });
+    }
+
+    #[export]
+    fn remove_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.manager.send(Command::RemoveBlotter { in_id, out_id });
+    }
+
+    #[export]
+    fn place_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.manager.send(Command::PlaceInverter { in_id, out_id });
+    }
+
+    #[export]
+    fn remove_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.manager.send(Command::RemoveInverter { in_id, out_id });
+    }
+
+    #[export]
+    fn step(&mut self, _owner: Reference) {
+        self.manager.send(Command::Step);
+    }
+
+    #[export]
+    fn start(&mut self, _owner: Reference) {
+        self.manager.send(Command::Start);
+    }
+
+    #[export]
+    fn stop(&mut self, _owner: Reference) {
+        self.manager.send(Command::Stop);
+    }
+
+    #[export]
+    fn start_atomic(&mut self, _owner: Reference) {
+        self.manager.start_atomic();
+    }
+
+    #[export]
+    fn finish_atomic(&mut self, _owner: Reference) {
+        self.manager.finish_atomic();
     }
 }
 
 enum Command {
-    TickRate(f32),
+    TickRate { tick_rate: f32 },
+    Set { id: usize },
+    Reset { id: usize },
+    PlaceBlotter { in_id: usize, out_id: usize },
+    RemoveBlotter { in_id: usize, out_id: usize },
+    PlaceInverter { in_id: usize, out_id: usize },
+    RemoveInverter { in_id: usize, out_id: usize },
     Step,
     Start,
     Stop,
-    Exit,
+    Atomic(Vec<Command>),
 }
 
 struct Manager {
     command_tx: mpsc::Sender<Command>,
     _thread: JoinHandle<()>,
+    atomic_buffer: Option<Vec<Command>>,
 }
 
 impl Manager {
@@ -59,23 +106,28 @@ impl Manager {
         Manager {
             command_tx,
             _thread: thread::spawn(move || Runner::new(command_rx).run()),
+            atomic_buffer: None,
         }
     }
 
-    fn set_tick_rate(&self, tick_rate: f32) {
-        self.command_tx.send(Command::TickRate(tick_rate)).ok();
+    fn send(&mut self, command: Command) {
+        if let Some(atomic_buffer) = self.atomic_buffer.as_mut() {
+            atomic_buffer.push(command);
+        } else {
+            self.command_tx.send(command).ok();
+        }
     }
 
-    fn step(&self) {
-        self.command_tx.send(Command::Step).ok();
+    fn start_atomic(&mut self) {
+        if self.atomic_buffer.is_none() {
+            self.atomic_buffer = Some(Vec::new());
+        }
     }
 
-    fn start(&self) {
-        self.command_tx.send(Command::Start).ok();
-    }
-
-    fn stop(&self) {
-        self.command_tx.send(Command::Stop).ok();
+    fn finish_atomic(&mut self) {
+        if let Some(atomic_buffer) = self.atomic_buffer.take() {
+            self.send(Command::Atomic(atomic_buffer));
+        }
     }
 }
 
@@ -110,6 +162,58 @@ impl Runner {
         swap(&mut self.current, &mut self.next);
     }
 
+    fn handle(&mut self, command: Command) {
+        match command {
+            Command::TickRate { tick_rate } => {
+                self.tick_period = Duration::from_secs(1).div_f32(tick_rate);
+            }
+            Command::Set { id } => {
+                self.current.set(id);
+            }
+            Command::Reset { id } => {
+                self.current.reset(id);
+            }
+            Command::PlaceBlotter { in_id, out_id } => {
+                let input = &mut self.state.wires[in_id];
+                if input.blotted.insert(out_id) && input.is_on() {
+                    self.current.set(out_id);
+                }
+            }
+            Command::RemoveBlotter { in_id, out_id } => {
+                let input = &mut self.state.wires[in_id];
+                if input.blotted.remove(&out_id) && input.is_on() {
+                    self.current.reset(out_id);
+                }
+            }
+            Command::PlaceInverter { in_id, out_id } => {
+                let input = &mut self.state.wires[in_id];
+                if input.inverted.insert(out_id) && !input.is_on() {
+                    self.current.set(out_id);
+                }
+            }
+            Command::RemoveInverter { in_id, out_id } => {
+                let input = &mut self.state.wires[in_id];
+                if input.inverted.remove(&out_id) && !input.is_on() {
+                    self.current.reset(out_id);
+                }
+            }
+            Command::Step => {
+                self.step();
+            }
+            Command::Start => {
+                self.next_tick = Some(Instant::now());
+            }
+            Command::Stop => {
+                self.next_tick = None;
+            }
+            Command::Atomic(commands) => {
+                for command in commands {
+                    self.handle(command);
+                }
+            }
+        }
+    }
+
     fn run(&mut self) {
         'main: loop {
             if let Some(next_tick) = self.next_tick {
@@ -126,19 +230,8 @@ impl Runner {
                     self.command_rx.recv().map_err(Into::into)
                 };
                 match command {
-                    Ok(Command::TickRate(tick_rate)) => {
-                        self.tick_period = Duration::from_secs(1).div_f32(tick_rate);
-                    }
-                    Ok(Command::Step) => {
-                        self.step();
-                    }
-                    Ok(Command::Start) => {
-                        self.next_tick = Some(Instant::now());
-                    }
-                    Ok(Command::Stop) => {
-                        self.next_tick = None;
-                    }
-                    Ok(Command::Exit) | Err(TryRecvError::Disconnected) => {
+                    Ok(command) => self.handle(command),
+                    Err(TryRecvError::Disconnected) => {
                         break 'main;
                     }
                     Err(TryRecvError::Empty) => {
