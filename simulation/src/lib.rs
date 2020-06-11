@@ -105,6 +105,7 @@ struct Manager {
     output: Arc<Mutex<Option<Vec<bool>>>>,
     _thread: JoinHandle<()>,
     atomic_buffer: Option<Vec<Command>>,
+    atomic_depth: usize,
 }
 
 impl Manager {
@@ -116,6 +117,7 @@ impl Manager {
             output: Arc::clone(&output),
             _thread: thread::spawn(move || Runner::new(command_rx, output).run()),
             atomic_buffer: None,
+            atomic_depth: 0,
         }
     }
 
@@ -134,11 +136,15 @@ impl Manager {
     fn start_atomic(&mut self) {
         if self.atomic_buffer.is_none() {
             self.atomic_buffer = Some(Vec::new());
+        } else {
+            self.atomic_depth += 1;
         }
     }
 
     fn finish_atomic(&mut self) {
-        if let Some(atomic_buffer) = self.atomic_buffer.take() {
+        if self.atomic_depth > 0 {
+            self.atomic_depth -= 1;
+        } else if let Some(atomic_buffer) = self.atomic_buffer.take() {
             self.send(Command::Atomic(atomic_buffer));
         }
     }
