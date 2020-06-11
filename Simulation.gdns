@@ -1,8 +1,0 @@
-[gd_resource type="NativeScript" load_steps=2 format=2]
-
-[ext_resource path="res://Simulation.tres" type="GDNativeLibrary" id=1]
-
-[resource]
-resource_name = "Simulation"
-class_name = "Simulation"
-library = ExtResource( 1 )
