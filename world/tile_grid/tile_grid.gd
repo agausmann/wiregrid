@@ -8,7 +8,7 @@ enum State { OFF, ON }
 
 const Direction := preload('res://direction.gd')
 
-export(TileType) var default_tile_type := TileType.NONE
+export(TileType) var tile_type := TileType.NONE
 
 onready var _component_input_tiles = [
 	[-1, -1],
@@ -53,8 +53,7 @@ onready var _tile_types := [
 ]
 
 func set_tile(loc: Vector2, index: int, direction: int, states: Array) -> void:
-	var _default_tiles = _tile_types[default_tile_type]
-	var tile = _deep_index(_default_tiles[index], states)
+	var tile = _deep_index(_tile_types[tile_type][index], states)
 	_set_inner(loc, tile, direction)
 
 

@@ -15,4 +15,3 @@ __meta__ = {
 }
 
 [node name="World" parent="." instance=ExtResource( 1 )]
-position = Vector2( 512, -64.936 )

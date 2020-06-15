@@ -34,7 +34,7 @@ cell_size = Vector2( 16, 16 )
 cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 6 )
-default_tile_type = 4
+tile_type = 4
 
 [node name="ComponentInput" type="TileMap" parent="."]
 z_index = 3
@@ -43,7 +43,7 @@ cell_size = Vector2( 16, 16 )
 cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 6 )
-default_tile_type = 1
+tile_type = 1
 
 [node name="ComponentOutput" type="TileMap" parent="."]
 z_index = 2
@@ -52,7 +52,7 @@ cell_size = Vector2( 16, 16 )
 cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 6 )
-default_tile_type = 2
+tile_type = 2
 
 [node name="ComponentBody" type="TileMap" parent="."]
 z_index = 1
@@ -61,7 +61,7 @@ cell_size = Vector2( 16, 16 )
 cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 6 )
-default_tile_type = 3
+tile_type = 3
 
 [node name="WireBottom" type="TileMap" parent="."]
 tile_set = ExtResource( 2 )
@@ -69,7 +69,7 @@ cell_size = Vector2( 16, 16 )
 cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 6 )
-default_tile_type = 4
+tile_type = 4
 
 [node name="Background" type="Sprite" parent="."]
 modulate = Color( 0.372549, 0.372549, 0.372549, 1 )
