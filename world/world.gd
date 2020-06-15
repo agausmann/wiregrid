@@ -45,7 +45,7 @@ onready var _wire_tiles := [
 
 func _get_tiles(name: String, depth: int=0):
 	if depth == 0:
-		return $Component.tile_set.find_tile_by_name(name)
+		return $ComponentBody.tile_set.find_tile_by_name(name)
 	else:
 		return [
 			_get_tiles(name + "_off", depth - 1),
