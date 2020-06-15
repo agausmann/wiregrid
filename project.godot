@@ -8,9 +8,14 @@
 
 config_version=4
 
-_global_script_classes=[  ]
+_global_script_classes=[ {
+"base": "TileMap",
+"class": "TileGrid",
+"language": "GDScript",
+"path": "res://world/tile_grid/tile_grid.gd"
+} ]
 _global_script_class_icons={
-
+"TileGrid": ""
 }
 
 [application]
