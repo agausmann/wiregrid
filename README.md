@@ -1,7 +1,7 @@
 # wiregrid
 
 Blazing fast 2D digital logic simulation, inspired by [Logic
-World](https://logicworld.net). Prerelase coming soon!
+World](https://logicworld.net). Prerelease coming soon!
 
 ![4-Bit Adder Example](media/adder.png)
 
