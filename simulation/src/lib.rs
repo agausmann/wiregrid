@@ -145,7 +145,9 @@ impl Manager {
         if self.atomic_depth > 0 {
             self.atomic_depth -= 1;
         } else if let Some(atomic_buffer) = self.atomic_buffer.take() {
-            self.send(Command::Atomic(atomic_buffer));
+            if !atomic_buffer.is_empty() {
+                self.send(Command::Atomic(atomic_buffer));
+            }
         }
     }
 }
