@@ -1,7 +1,11 @@
-[gd_scene load_steps=2 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://world/tile_grid/tile_grid.gd" type="Script" id=1]
+[ext_resource path="res://assets/tiles.tres" type="TileSet" id=2]
 
-[node name="TileMap" type="TileMap"]
+[node name="TileGrid" type="TileMap"]
+tile_set = ExtResource( 2 )
+cell_size = Vector2( 16, 16 )
+cell_custom_transform = Transform2D( 16, 0, 0, 16, 0, 0 )
 format = 1
 script = ExtResource( 1 )

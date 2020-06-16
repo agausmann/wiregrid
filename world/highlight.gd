@@ -1,4 +1,4 @@
-extends TileGrid
+extends Node2D
 
 export var width := 1.0 setget _set_width, _get_width
 export var color := Color.black setget _set_color, _get_color

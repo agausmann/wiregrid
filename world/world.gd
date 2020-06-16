@@ -8,12 +8,7 @@ var _tile_wires := {}
 var _wires := []
 var _free_wires := []
 var _simulation := Simulation.new()
-onready var highlight := $Highlight
-onready var wire_top := $WireTop
-onready var component_input := $ComponentInput
-onready var component_output := $ComponentOutput
-onready var component_body := $ComponentBody
-onready var wire_bottom := $WireBottom
+var _update_tiles := {}
 
 
 func _process(delta: float) -> void:
