@@ -15,7 +15,6 @@ shader_param/tile_size = Vector2( 16, 16 )
 
 [node name="World" type="Node2D"]
 position = Vector2( 512, 300 )
-scale = Vector2( 4, 4 )
 script = ExtResource( 3 )
 __meta__ = {
 "_edit_lock_": true
@@ -34,12 +33,12 @@ z_index = 10
 
 [node name="Background" type="Sprite" parent="."]
 modulate = Color( 0.372549, 0.372549, 0.372549, 1 )
-position = Vector2( -128, -75 )
+position = Vector2( -512, -300 )
 z_index = -1
 texture = ExtResource( 1 )
 centered = false
 region_enabled = true
-region_rect = Rect2( -128, -75, 256, 150 )
+region_rect = Rect2( -512, -300, 1024, 600 )
 script = ExtResource( 2 )
 __meta__ = {
 "_edit_lock_": true
