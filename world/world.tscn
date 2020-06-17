@@ -17,6 +17,9 @@ shader_param/tile_size = Vector2( 16, 16 )
 position = Vector2( 512, 300 )
 scale = Vector2( 4, 4 )
 script = ExtResource( 3 )
+__meta__ = {
+"_edit_lock_": true
+}
 
 [node name="HighlightLayer" parent="." instance=ExtResource( 6 )]
 material = SubResource( 1 )
@@ -38,3 +41,6 @@ centered = false
 region_enabled = true
 region_rect = Rect2( -128, -75, 256, 150 )
 script = ExtResource( 2 )
+__meta__ = {
+"_edit_lock_": true
+}
