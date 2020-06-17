@@ -21,16 +21,13 @@ var _update_tiles := {}
 
 
 func _process(delta: float) -> void:
+	var viewport = get_viewport()
+	var tf = get_viewport_transform().affine_inverse()
+	selected_tile = main_layer.world_to_map(tf.xform(viewport.get_mouse_position()))
 	_current_mode.process(delta)
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		# NB: Transform2D.xform_inv does not perform the actual inverse,
-		# similar to how the inverse transform is affine_inverse() not inverse()
-		var viewport = get_viewport()
-		var tf = get_viewport_transform().affine_inverse()
-		selected_tile = main_layer.world_to_map(tf.xform(viewport.get_mouse_position()))
 	_current_mode.input(event)
 
 
