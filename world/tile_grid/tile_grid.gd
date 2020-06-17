@@ -20,10 +20,10 @@ onready var _component_input_tiles = [
 ]
 onready var _component_output_tiles = [
 	[-1, -1],
-	_get_tiles("output", 1),
-	_get_tiles("output", 1),
-	_get_tiles("output", 1),
-	_get_tiles("output", 1),
+	_get_tiles("output_side", 1),
+	_get_tiles("output_side", 1),
+	_get_tiles("output_side", 1),
+	_get_tiles("output_side", 1),
 	[-1, -1],
 ]
 onready var _component_body_tiles = [
@@ -94,7 +94,7 @@ func _deep_index(obj, idx: Array):
 
 
 func _set_inner(loc: Vector2, tile: int, direction: int) -> void:
-	var flip_x := [Direction.LEFT, Direction.UP].has(direction)
-	var flip_y := [Direction.LEFT, Direction.DOWN].has(direction)
+	var flip_x := [Direction.LEFT, Direction.DOWN].has(direction)
+	var flip_y := [Direction.LEFT, Direction.UP].has(direction)
 	var transpose := [Direction.UP, Direction.DOWN].has(direction)
 	set_cellv(loc, tile, flip_x, flip_y, transpose)

@@ -1,8 +1,17 @@
+class_name WiregridWorld
 extends Node2D
 
+const Component := TileGrid.ComponentType
+const State := TileGrid.State
 const Direction := preload('res://direction.gd')
 const Simulation := preload('res://simulation/simulation.gdns')
 
+var selected_tile := Vector2.ZERO
+var selected_component: int = Component.INVERTER
+var selected_direction: int = Direction.UP
+onready var main_layer := $MainLayer
+onready var ghost_layer := $GhostLayer
+onready var highlight_layer := $HighlightLayer
 var _current_mode: Mode = NormalMode.new(self)
 var _tile_wires := {}
 var _wires := []
@@ -16,6 +25,12 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		# NB: Transform2D.xform_inv does not perform the actual inverse,
+		# similar to how the inverse transform is affine_inverse() not inverse()
+		var viewport = get_viewport()
+		var tf = get_viewport_transform().affine_inverse()
+		selected_tile = main_layer.world_to_map(tf.xform(viewport.get_mouse_position()))
 	_current_mode.input(event)
 
 
@@ -50,13 +65,17 @@ func place_wire(start: Vector2, direction: int, length: int) -> void:
 	_simulation.finish_atomic()
 
 
+func remove_wire(start: Vector2, direction: int, length: int) -> void:
+	pass
+
+
 func _get_endpoint_wire(loc: Vector2, direction: int) -> int:
 	var wire := -1
 	for _i in range(4):
 		if _tile_wires[loc].has(direction):
 			wire = _tile_wires[loc][direction]
 			break
-		direction = Direction.rotate_left(direction)
+		direction = Direction.left(direction)
 	return wire
 
 
@@ -102,10 +121,14 @@ func _merge_wire(dst: int, src: int) -> void:
 	_simulation.finish_atomic()
 
 
+func _split_wire(src: int) -> int:
+	return -1
+
+
 class Mode:
-	var world
+	var world: WiregridWorld
 	
-	func _init(w) -> void:
+	func _init(w: WiregridWorld) -> void:
 		world = w
 	
 	func process(_delta: float) -> void:
@@ -122,13 +145,17 @@ class Mode:
 
 
 class NormalMode extends Mode:
-	var selected_tile: Vector2
-	
 	func _init(w).(w): pass
-	
-	func input(event: InputEvent) -> void:
-		if event is InputEventMouseMotion:
-			pass
+		
+	func process(_delta: float) -> void:
+		world.ghost_layer.clear()
+		world.ghost_layer.place_component(
+			world.selected_tile,
+			world.selected_component,
+			world.selected_direction,
+			State.OFF,
+			State.ON
+		)
 
 
 class Wire:
