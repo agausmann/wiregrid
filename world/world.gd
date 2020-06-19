@@ -113,6 +113,7 @@ func _place_wire_part(loc: Vector2, direction: int, wire_id: int) -> int:
 		if not _tile_wires.has(loc):
 			_tile_wires[loc] = {}
 		_tile_wires[loc][direction] = wire_id
+	_wires[wire_id].connected_tiles[loc] = null
 	return wire_id
 
 
@@ -132,6 +133,7 @@ func _create_wire() -> int:
 		_wires.append(Wire.new())
 	else:
 		wire_id = _free_wires.pop_back()
+		_wires[wire_id] = Wire.new()
 	return wire_id
 
 
@@ -139,6 +141,15 @@ func _merge_wire(dst: int, src: int) -> void:
 	assert(dst != -1)
 	if src == dst or src == -1:
 		return
+	for tile_loc in _wires[src].connected_tiles.keys():
+		_wires[dst].connected_tiles[tile_loc] = null
+		var tile_wires = _tile_wires[tile_loc]
+		for direction in tile_wires.keys():
+			if tile_wires[direction] == src:
+				tile_wires[direction] = dst
+			elif tile_wires[direction] == dst:
+				# used to be a crossed wire, force redraw
+				_draw_wire(tile_loc)
 	_simulation.start_atomic()
 	_free_wires.append(src)
 	_simulation.finish_atomic()
@@ -259,5 +270,7 @@ class PlaceWireMode extends LineMode:
 
 
 class Wire:
+	var connected_tiles := {}
+	
 	func _init():
 		pass
