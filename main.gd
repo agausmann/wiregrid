@@ -1,4 +1,4 @@
-extends ViewportContainer
+extends Control
 
 var pan_speed := 500.0
 var mouse_panning := false
@@ -10,7 +10,8 @@ var zoom_input := 0.0
 var current_zoom := 1.0
 var cursor_speed := 20.0
 var cursor_input := Vector2.ZERO
-onready var world_view := $WorldView
+onready var world_view := $WorldView/Viewport
+onready var world := $WorldView/Viewport/World
 
 
 func _input(event: InputEvent) -> void:
