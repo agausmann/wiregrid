@@ -7,6 +7,7 @@ enum WireType { NONE, WIRE0, WIRE1, WIRE2A, WIRE2B, WIRE3, WIRE4, WIRE_CROSS }
 enum State { OFF, ON }
 
 const Direction := preload('res://direction.gd')
+const Rotation := Direction.Rotation
 
 export(TileType) var tile_type := TileType.NONE
 
@@ -72,9 +73,9 @@ func set_component_body(loc: Vector2, component: int, direction: int, states: Ar
 	_set_inner(loc, tile, direction)
 
 
-func set_wire(loc: Vector2, wire: int, direction: int, states: Array) -> void:
+func set_wire(loc: Vector2, wire: int, rotation: int, states: Array) -> void:
 	var tile = _deep_index(_wire_tiles[wire], states)
-	_set_inner(loc, tile, direction)
+	_set_inner(loc, tile, rotation)
 
 
 func _get_tiles(name: String, depth: int=0):
@@ -93,8 +94,8 @@ func _deep_index(obj, idx: Array):
 	return obj
 
 
-func _set_inner(loc: Vector2, tile: int, direction: int) -> void:
-	var flip_x := [Direction.LEFT, Direction.DOWN].has(direction)
-	var flip_y := [Direction.LEFT, Direction.UP].has(direction)
-	var transpose := [Direction.UP, Direction.DOWN].has(direction)
+func _set_inner(loc: Vector2, tile: int, rotation: int) -> void:
+	var flip_x := [Rotation.OPPOSITE, Rotation.RIGHT].has(rotation)
+	var flip_y := [Rotation.OPPOSITE, Rotation.LEFT].has(rotation)
+	var transpose := [Rotation.LEFT, Rotation.RIGHT].has(rotation)
 	set_cellv(loc, tile, flip_x, flip_y, transpose)

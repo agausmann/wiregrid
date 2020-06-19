@@ -3,7 +3,7 @@ extends Node2D
 const Component := TileGrid.ComponentType
 const State := TileGrid.State
 const Direction := preload("res://direction.gd")
-const Relative := Direction.Relative
+const Rotation := Direction.Rotation
 
 onready var wire_top := $WireTop
 onready var input := $Input
@@ -22,6 +22,10 @@ func clear() -> void:
 	self.output.clear()
 	self.body.clear()
 	self.wire_bottom.clear()
+
+
+func place_wire(pos: Vector2, wire: int, direction: int, states: Array) -> void:
+	self.wire_bottom.set_tile(pos, wire, direction, states)
 
 
 func place_component(pos: Vector2, component: int, direction: int, input_state: int, output_state: int) -> void:
