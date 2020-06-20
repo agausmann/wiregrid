@@ -10,10 +10,10 @@ func _process(_delta: float) -> void:
 	text += "Wires:\n"
 	var wire_connections = world._tile_wires.get(world.selected_tile, {})
 	var directions := [
+		Direction.LEFT,
 		Direction.RIGHT,
 		Direction.UP,
 		Direction.DOWN,
-		Direction.LEFT,
 	]
 	for direction in directions:
 		text += "    %s: %d\n" % [

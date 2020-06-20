@@ -4,8 +4,8 @@ enum Rotation { SAME, LEFT, OPPOSITE, RIGHT }
 static func to_str(direction: int) -> Vector2:
 	return [
 		"Right",
-		"Left",
 		"Up",
+		"Left",
 		"Down",
 	][direction]
 

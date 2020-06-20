@@ -91,13 +91,12 @@ func remove_wire(start: Vector2, direction: int, length: int) -> void:
 
 
 func _get_endpoint_wire(loc: Vector2, direction: int) -> int:
-	var wire := -1
-	for _i in range(4):
-		if _tile_wires.has(loc) and _tile_wires[loc].has(direction):
-			wire = _tile_wires[loc][direction]
-			break
-		direction = Direction.left(direction)
-	return wire
+	if _tile_wires.has(loc):
+		for _i in range(4):
+			if _tile_wires[loc].has(direction):
+				return _tile_wires[loc][direction]
+			direction = Direction.left(direction)
+	return -1
 
 
 func _place_wire_part(loc: Vector2, direction: int, wire_id: int) -> int:
