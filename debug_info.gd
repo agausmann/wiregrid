@@ -5,6 +5,7 @@ const Direction := preload("res://direction.gd")
 func _process(_delta: float) -> void:
 	var world: WiregridWorld = $"..".world
 	text = ""
+	text += "FPS: %s\n" % Engine.get_frames_per_second()
 	text += "Selected tile: %s\n" % world.selected_tile
 	
 	text += "Wires:\n"
