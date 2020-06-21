@@ -6,6 +6,14 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+godot_gdnative_init!();
+godot_nativescript_init!(init);
+godot_gdnative_terminate!();
+
+fn init(handle: gdnative::init::InitHandle) {
+    handle.add_class::<Simulation>();
+}
+
 #[derive(NativeClass)]
 #[inherit(Reference)]
 struct Simulation {
@@ -115,7 +123,7 @@ impl Manager {
         Manager {
             command_tx,
             output: Arc::clone(&output),
-            _thread: thread::spawn(move || Runner::new(command_rx, output).run()),
+            _thread: thread::spawn(move || ThreadRunner::new(command_rx, output).run()),
             atomic_buffer: None,
             atomic_depth: 0,
         }
@@ -152,39 +160,36 @@ impl Manager {
     }
 }
 
-struct Runner {
+struct ThreadRunner {
     command_rx: mpsc::Receiver<Command>,
     output: Arc<Mutex<Option<Vec<bool>>>>,
     tick_period: Duration,
     next_tick: Option<Instant>,
-    state: State,
-    current: UpdateBuffer,
-    next: UpdateBuffer,
+    runner: Runner,
 }
 
-impl Runner {
-    fn new(command_rx: mpsc::Receiver<Command>, output: Arc<Mutex<Option<Vec<bool>>>>) -> Runner {
-        Runner {
+impl ThreadRunner {
+    fn new(
+        command_rx: mpsc::Receiver<Command>,
+        output: Arc<Mutex<Option<Vec<bool>>>>,
+    ) -> ThreadRunner {
+        ThreadRunner {
             command_rx,
             output,
             tick_period: Duration::from_millis(10),
             next_tick: None,
-            state: State::new(),
-            current: UpdateBuffer::new(),
-            next: UpdateBuffer::new(),
+            runner: Runner::new(),
         }
+    }
+
+    fn step(&mut self) {
+        self.runner.step();
+        let output = self.runner.state.wires.iter().map(Wire::is_on).collect();
+        *self.output.lock().unwrap() = Some(output);
     }
 
     fn is_running(&self) -> bool {
         self.next_tick.is_some()
-    }
-
-    fn step(&mut self) {
-        self.state.apply(&self.current, &mut self.next);
-        self.current.clear();
-        swap(&mut self.current, &mut self.next);
-        let output = self.state.wires.iter().map(Wire::is_on).collect();
-        *self.output.lock().unwrap() = Some(output);
     }
 
     fn handle(&mut self, command: Command) {
@@ -193,34 +198,22 @@ impl Runner {
                 self.tick_period = Duration::from_secs(1).div_f32(tick_rate);
             }
             Command::Set { id } => {
-                self.current.set(id);
+                self.runner.set(id);
             }
             Command::Reset { id } => {
-                self.current.reset(id);
+                self.runner.reset(id);
             }
             Command::PlaceBlotter { in_id, out_id } => {
-                let input = self.state.wire(in_id);
-                if input.blotted.insert(out_id) && input.is_on() {
-                    self.current.set(out_id);
-                }
+                self.runner.place_blotter(in_id, out_id);
             }
             Command::RemoveBlotter { in_id, out_id } => {
-                let input = self.state.wire(in_id);
-                if input.blotted.remove(&out_id) && input.is_on() {
-                    self.current.reset(out_id);
-                }
+                self.runner.remove_blotter(in_id, out_id);
             }
             Command::PlaceInverter { in_id, out_id } => {
-                let input = self.state.wire(in_id);
-                if input.inverted.insert(out_id) && !input.is_on() {
-                    self.current.set(out_id);
-                }
+                self.runner.place_inverter(in_id, out_id);
             }
             Command::RemoveInverter { in_id, out_id } => {
-                let input = self.state.wire(in_id);
-                if input.inverted.remove(&out_id) && !input.is_on() {
-                    self.current.reset(out_id);
-                }
+                self.runner.remove_inverter(in_id, out_id);
             }
             Command::Step => {
                 self.step();
@@ -265,6 +258,64 @@ impl Runner {
                 }
             }
         }
+    }
+}
+
+struct Runner {
+    state: State,
+    current: UpdateBuffer,
+    next: UpdateBuffer,
+}
+
+impl Runner {
+    fn new() -> Runner {
+        Runner {
+            state: State::new(),
+            current: UpdateBuffer::new(),
+            next: UpdateBuffer::new(),
+        }
+    }
+
+    fn set(&mut self, id: usize) {
+        self.current.set(id);
+    }
+
+    fn reset(&mut self, id: usize) {
+        self.current.reset(id);
+    }
+
+    fn place_blotter(&mut self, in_id: usize, out_id: usize) {
+        let input = self.state.wire(in_id);
+        if input.blotted.insert(out_id) && input.is_on() {
+            self.current.set(out_id);
+        }
+    }
+
+    fn remove_blotter(&mut self, in_id: usize, out_id: usize) {
+        let input = self.state.wire(in_id);
+        if input.blotted.remove(&out_id) && input.is_on() {
+            self.current.reset(out_id);
+        }
+    }
+
+    fn place_inverter(&mut self, in_id: usize, out_id: usize) {
+        let input = self.state.wire(in_id);
+        if input.inverted.insert(out_id) && !input.is_on() {
+            self.current.set(out_id);
+        }
+    }
+
+    fn remove_inverter(&mut self, in_id: usize, out_id: usize) {
+        let input = self.state.wire(in_id);
+        if input.inverted.remove(&out_id) && !input.is_on() {
+            self.current.reset(out_id);
+        }
+    }
+
+    fn step(&mut self) {
+        self.state.apply(&self.current, &mut self.next);
+        self.current.clear();
+        swap(&mut self.current, &mut self.next);
     }
 }
 
@@ -345,10 +396,70 @@ impl UpdateBuffer {
     }
 }
 
-fn init(handle: gdnative::init::InitHandle) {
-    handle.add_class::<Simulation>();
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-godot_gdnative_init!();
-godot_nativescript_init!(init);
-godot_gdnative_terminate!();
+    #[test]
+    fn inverter_loop() {
+        let mut runner = Runner::new();
+        runner.place_inverter(0, 0);
+        let mut wire0 = false;
+        for _ in 0..100 {
+            runner.step();
+            wire0 = !wire0;
+            assert_eq!(runner.state.wire(0).is_on(), wire0);
+        }
+    }
+
+    #[test]
+    fn blotter_loop() {
+        let mut runner = Runner::new();
+        runner.place_blotter(0, 1);
+        runner.place_blotter(1, 0);
+        runner.set(0);
+        runner.step();
+        runner.reset(0);
+
+        let mut wire0 = true;
+        let mut wire1 = false;
+        for _ in 0..100 {
+            runner.step();
+            wire0 = !wire0;
+            wire1 = !wire1;
+            assert_eq!(runner.state.wire(0).is_on(), wire0);
+            assert_eq!(runner.state.wire(1).is_on(), wire1);
+        }
+    }
+
+    #[test]
+    fn rs_latch() {
+        let mut runner = Runner::new();
+        runner.place_inverter(0, 1);
+        runner.step();
+        runner.place_inverter(1, 0);
+        runner.step();
+        let mut wire0 = false;
+        let mut wire1 = true;
+
+        for _ in 0..100 {
+            runner.step();
+            assert_eq!(runner.state.wire(0).is_on(), wire0);
+            assert_eq!(runner.state.wire(1).is_on(), wire1);
+        }
+
+        runner.set(0);
+        runner.step();
+        runner.step();
+        runner.reset(0);
+        runner.step();
+        wire0 = true;
+        wire1 = false;
+
+        for _ in 0..100 {
+            runner.step();
+            assert_eq!(runner.state.wire(0).is_on(), wire0);
+            assert_eq!(runner.state.wire(1).is_on(), wire1);
+        }
+    }
+}
