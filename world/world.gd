@@ -72,16 +72,15 @@ func place_wire(start: Vector2, direction: int, length: int) -> void:
 		_merge_wire(start_wire, end_wire)
 		wire = start_wire
 
-	wire = _place_wire_part(start, direction, wire)
-	wire = _place_wire_part(end, Direction.opposite(direction), wire)
+	wire = _place_wire_part(start, [direction], wire)
+	wire = _place_wire_part(end, [Direction.opposite(direction)], wire)
 	_draw_wire(start)
 	_draw_wire(end)
 	
 	# Middle segments
 	for i in range(1, length):
 		var loc := start + dv * i
-		wire = _place_wire_part(loc, direction, wire)
-		wire = _place_wire_part(loc, Direction.opposite(direction), wire)
+		wire = _place_wire_part(loc, [direction, Direction.opposite(direction)], wire)
 		_draw_wire(loc)
 	_simulation.finish_atomic()
 
@@ -99,20 +98,27 @@ func _get_endpoint_wire(loc: Vector2, direction: int) -> int:
 	return -1
 
 
-func _place_wire_part(loc: Vector2, direction: int, wire_id: int) -> int:
-	if _tile_wires.has(loc) and _tile_wires[loc].has(direction):
-		var new_wire = _tile_wires[loc][direction]
-		if wire_id == -1:
-			wire_id = new_wire
-		elif wire_id != new_wire:
-			_merge_wire(wire_id, new_wire)
-	else:
-		if wire_id == -1:
-			wire_id = _create_wire()
-		if not _tile_wires.has(loc):
-			_tile_wires[loc] = {}
-		_tile_wires[loc][direction] = wire_id
-	_wires[wire_id].connected_tiles[loc] = null
+func _place_wire_part(loc: Vector2, directions: Array, wire_id: int) -> int:
+	for direction in directions:
+		if _tile_wires.has(loc) and _tile_wires[loc].has(direction):
+			var new_wire = _tile_wires[loc][direction]
+			if wire_id == -1:
+				wire_id = new_wire
+			elif wire_id != new_wire:
+				_merge_wire(wire_id, new_wire)
+		else:
+			if wire_id == -1:
+				wire_id = _create_wire()
+			if not _tile_wires.has(loc):
+				_tile_wires[loc] = {}
+			_tile_wires[loc][direction] = wire_id
+		_wires[wire_id].connected_tiles[loc] = null
+	
+	var left := Direction.left(directions[0])
+	var right := Direction.right(directions[0])
+	if len(directions) < 2 or (_tile_wires[loc].has(left) != _tile_wires[loc].has(right)):
+		_merge_wire(wire_id, _tile_wires[loc].get(left, -1))
+		_merge_wire(wire_id, _tile_wires[loc].get(right, -1))
 	return wire_id
 
 
@@ -140,6 +146,7 @@ func _merge_wire(dst: int, src: int) -> void:
 	assert(dst != -1)
 	if src == dst or src == -1:
 		return
+	_simulation.start_atomic()
 	for tile_loc in _wires[src].connected_tiles.keys():
 		_wires[dst].connected_tiles[tile_loc] = null
 		var tile_wires = _tile_wires[tile_loc]
@@ -149,7 +156,6 @@ func _merge_wire(dst: int, src: int) -> void:
 			elif tile_wires[direction] == dst:
 				# used to be a crossed wire, force redraw
 				_draw_wire(tile_loc)
-	_simulation.start_atomic()
 	_free_wires.append(src)
 	_simulation.finish_atomic()
 
