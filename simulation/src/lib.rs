@@ -1,6 +1,7 @@
 use gdnative::*;
 use std::collections::{HashMap, HashSet};
 use std::mem::swap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -17,84 +18,85 @@ fn init(handle: gdnative::init::InitHandle) {
 #[derive(NativeClass)]
 #[inherit(Reference)]
 struct Simulation {
-    manager: Manager,
+    runner: ThreadRunner,
 }
 
 #[methods]
 impl Simulation {
     fn _init(_owner: Reference) -> Self {
         Simulation {
-            manager: Manager::new(),
+            runner: ThreadRunner::new(),
         }
     }
 
     #[export]
     fn get_state(&self, _owner: Reference) -> Variant {
-        self.manager.state().to_variant()
+        self.runner.state().to_variant()
     }
 
     #[export]
     fn set_tick_rate(&mut self, _owner: Reference, tick_rate: f32) {
-        self.manager.send(Command::TickRate { tick_rate });
+        self.runner.send(Command::TickRate { tick_rate });
     }
 
     #[export]
     fn set(&mut self, _owner: Reference, id: usize) {
-        self.manager.send(Command::Set { id });
+        self.runner.send(Command::Set { id });
     }
 
     #[export]
     fn reset(&mut self, _owner: Reference, id: usize) {
-        self.manager.send(Command::Reset { id });
+        self.runner.send(Command::Reset { id });
     }
 
     #[export]
     fn place_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.manager.send(Command::PlaceBlotter { in_id, out_id });
+        self.runner.send(Command::PlaceBlotter { in_id, out_id });
     }
 
     #[export]
     fn remove_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.manager.send(Command::RemoveBlotter { in_id, out_id });
+        self.runner.send(Command::RemoveBlotter { in_id, out_id });
     }
 
     #[export]
     fn place_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.manager.send(Command::PlaceInverter { in_id, out_id });
+        self.runner.send(Command::PlaceInverter { in_id, out_id });
     }
 
     #[export]
     fn remove_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.manager.send(Command::RemoveInverter { in_id, out_id });
+        self.runner.send(Command::RemoveInverter { in_id, out_id });
     }
 
     #[export]
     fn step(&mut self, _owner: Reference) {
-        self.manager.send(Command::Step);
+        self.runner.send(Command::Step);
     }
 
     #[export]
     fn start(&mut self, _owner: Reference) {
-        self.manager.send(Command::Start);
+        self.runner.send(Command::Start);
     }
 
     #[export]
     fn stop(&mut self, _owner: Reference) {
-        self.manager.send(Command::Stop);
+        self.runner.send(Command::Stop);
     }
 
     #[export]
     fn start_atomic(&mut self, _owner: Reference) {
-        self.manager.start_atomic();
+        self.runner.start_atomic();
     }
 
     #[export]
     fn finish_atomic(&mut self, _owner: Reference) {
-        self.manager.finish_atomic();
+        self.runner.finish_atomic();
     }
 }
 
-enum Command {
+#[non_exhaustive]
+pub enum Command {
     TickRate { tick_rate: f32 },
     Set { id: usize },
     Reset { id: usize },
@@ -108,32 +110,37 @@ enum Command {
     Atomic(Vec<Command>),
 }
 
-struct Manager {
+pub struct ThreadRunner {
     command_tx: mpsc::Sender<Command>,
-    output: Arc<Mutex<Option<Vec<bool>>>>,
+    shared: Arc<ThreadRunnerShared>,
     _thread: JoinHandle<()>,
     atomic_buffer: Option<Vec<Command>>,
     atomic_depth: usize,
 }
 
-impl Manager {
-    fn new() -> Manager {
+impl ThreadRunner {
+    pub fn new() -> ThreadRunner {
         let (command_tx, command_rx) = mpsc::channel();
-        let output = Arc::new(Mutex::new(None));
-        Manager {
+        let shared = Arc::new(ThreadRunnerShared::new());
+        let mut remote = ThreadRunnerRemote::new(command_rx, Arc::clone(&shared));
+        ThreadRunner {
             command_tx,
-            output: Arc::clone(&output),
-            _thread: thread::spawn(move || ThreadRunner::new(command_rx, output).run()),
+            shared,
+            _thread: thread::spawn(move || remote.run()),
             atomic_buffer: None,
             atomic_depth: 0,
         }
     }
 
-    fn state(&self) -> Option<Vec<bool>> {
-        self.output.lock().unwrap().take()
+    pub fn state(&self) -> Option<Vec<bool>> {
+        self.shared.output.lock().unwrap().take()
     }
 
-    fn send(&mut self, command: Command) {
+    pub fn tick_count(&self) -> usize {
+        self.shared.tick_counter.load(Ordering::Relaxed)
+    }
+
+    pub fn send(&mut self, command: Command) {
         if let Some(atomic_buffer) = self.atomic_buffer.as_mut() {
             atomic_buffer.push(command);
         } else {
@@ -141,7 +148,7 @@ impl Manager {
         }
     }
 
-    fn start_atomic(&mut self) {
+    pub fn start_atomic(&mut self) {
         if self.atomic_buffer.is_none() {
             self.atomic_buffer = Some(Vec::new());
         } else {
@@ -149,7 +156,7 @@ impl Manager {
         }
     }
 
-    fn finish_atomic(&mut self) {
+    pub fn finish_atomic(&mut self) {
         if self.atomic_depth > 0 {
             self.atomic_depth -= 1;
         } else if let Some(atomic_buffer) = self.atomic_buffer.take() {
@@ -160,22 +167,22 @@ impl Manager {
     }
 }
 
-struct ThreadRunner {
+struct ThreadRunnerRemote {
     command_rx: mpsc::Receiver<Command>,
-    output: Arc<Mutex<Option<Vec<bool>>>>,
+    shared: Arc<ThreadRunnerShared>,
     tick_period: Duration,
     next_tick: Option<Instant>,
     runner: Runner,
 }
 
-impl ThreadRunner {
+impl ThreadRunnerRemote {
     fn new(
         command_rx: mpsc::Receiver<Command>,
-        output: Arc<Mutex<Option<Vec<bool>>>>,
-    ) -> ThreadRunner {
-        ThreadRunner {
+        shared: Arc<ThreadRunnerShared>,
+    ) -> ThreadRunnerRemote {
+        ThreadRunnerRemote {
             command_rx,
-            output,
+            shared,
             tick_period: Duration::from_millis(10),
             next_tick: None,
             runner: Runner::new(),
@@ -185,7 +192,8 @@ impl ThreadRunner {
     fn step(&mut self) {
         self.runner.step();
         let output = self.runner.state.wires.iter().map(Wire::is_on).collect();
-        *self.output.lock().unwrap() = Some(output);
+        *self.shared.output.lock().unwrap() = Some(output);
+        self.shared.tick_counter.fetch_add(1, Ordering::Relaxed);
     }
 
     fn is_running(&self) -> bool {
@@ -261,14 +269,28 @@ impl ThreadRunner {
     }
 }
 
-struct Runner {
+pub struct ThreadRunnerShared {
+    output: Mutex<Option<Vec<bool>>>,
+    tick_counter: AtomicUsize,
+}
+
+impl ThreadRunnerShared {
+    fn new() -> ThreadRunnerShared {
+        ThreadRunnerShared {
+            output: Mutex::new(None),
+            tick_counter: AtomicUsize::new(0),
+        }
+    }
+}
+
+pub struct Runner {
     state: State,
     current: UpdateBuffer,
     next: UpdateBuffer,
 }
 
 impl Runner {
-    fn new() -> Runner {
+    pub fn new() -> Runner {
         Runner {
             state: State::new(),
             current: UpdateBuffer::new(),
@@ -276,50 +298,50 @@ impl Runner {
         }
     }
 
-    fn set(&mut self, id: usize) {
+    pub fn set(&mut self, id: usize) {
         self.current.set(id);
     }
 
-    fn reset(&mut self, id: usize) {
+    pub fn reset(&mut self, id: usize) {
         self.current.reset(id);
     }
 
-    fn place_blotter(&mut self, in_id: usize, out_id: usize) {
+    pub fn place_blotter(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
         if input.blotted.insert(out_id) && input.is_on() {
             self.current.set(out_id);
         }
     }
 
-    fn remove_blotter(&mut self, in_id: usize, out_id: usize) {
+    pub fn remove_blotter(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
         if input.blotted.remove(&out_id) && input.is_on() {
             self.current.reset(out_id);
         }
     }
 
-    fn place_inverter(&mut self, in_id: usize, out_id: usize) {
+    pub fn place_inverter(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
         if input.inverted.insert(out_id) && !input.is_on() {
             self.current.set(out_id);
         }
     }
 
-    fn remove_inverter(&mut self, in_id: usize, out_id: usize) {
+    pub fn remove_inverter(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
         if input.inverted.remove(&out_id) && !input.is_on() {
             self.current.reset(out_id);
         }
     }
 
-    fn step(&mut self) {
+    pub fn step(&mut self) {
         self.state.apply(&self.current, &mut self.next);
         self.current.clear();
         swap(&mut self.current, &mut self.next);
     }
 }
 
-struct State {
+pub struct State {
     wires: Vec<Wire>,
 }
 
@@ -328,7 +350,7 @@ impl State {
         State { wires: Vec::new() }
     }
 
-    fn wire(&mut self, id: usize) -> &mut Wire {
+    pub fn wire(&mut self, id: usize) -> &mut Wire {
         let min_len = id + 1;
         if self.wires.len() < min_len {
             self.wires.resize_with(min_len, Default::default);
@@ -360,14 +382,14 @@ impl State {
 }
 
 #[derive(Default)]
-struct Wire {
+pub struct Wire {
     input_count: isize,
     blotted: HashSet<usize>,
     inverted: HashSet<usize>,
 }
 
 impl Wire {
-    fn is_on(&self) -> bool {
+    pub fn is_on(&self) -> bool {
         self.input_count > 0
     }
 }
