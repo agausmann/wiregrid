@@ -1,6 +1,6 @@
 extends Control
 
-var pan_speed := 500.0
+var pan_speed := 800.0
 var mouse_panning := false
 var pan_input := Vector2.ZERO
 var current_pan := Vector2.ZERO
@@ -49,6 +49,7 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	current_pan -= (pan_speed * delta / current_zoom) * pan_input
 	current_zoom *= 1 + (zoom_speed * delta * zoom_input)
+	current_zoom = clamp(current_zoom, 0.5, 8)
 	if cursor_input.length_squared() > 0.1:
 		Input.warp_mouse_position(get_global_mouse_position() + cursor_speed * cursor_input)
 	world_view.set_canvas_transform(Transform2D(
