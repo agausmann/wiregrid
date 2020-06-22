@@ -153,9 +153,7 @@ func _merge_wire(dst: int, src: int) -> void:
 		for direction in tile_wires.keys():
 			if tile_wires[direction] == src:
 				tile_wires[direction] = dst
-			elif tile_wires[direction] == dst:
-				# used to be a crossed wire, force redraw
-				_draw_wire(tile_loc)
+		_draw_wire(tile_loc)
 	_free_wires.append(src)
 	_simulation.finish_atomic()
 
