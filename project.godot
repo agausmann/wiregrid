@@ -9,25 +9,19 @@
 config_version=4
 
 _global_script_classes=[ {
-"base": "TileMap",
-"class": "TileGrid",
-"language": "GDScript",
-"path": "res://world/tile_grid/tile_grid.gd"
-}, {
-"base": "Node2D",
+"base": "Sprite",
 "class": "WiregridWorld",
 "language": "GDScript",
 "path": "res://world/world.gd"
 } ]
 _global_script_class_icons={
-"TileGrid": "",
 "WiregridWorld": ""
 }
 
 [application]
 
 config/name="wiregrid"
-run/main_scene="res://main.tscn"
+run/main_scene="res://world/world.tscn"
 config/icon="res://icon.png"
 
 [editor_plugins]
