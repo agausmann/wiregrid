@@ -9,12 +9,18 @@
 config_version=4
 
 _global_script_classes=[ {
+"base": "Polygon2D",
+"class": "WireSegment",
+"language": "GDScript",
+"path": "res://world/segment.gd"
+}, {
 "base": "Node2D",
 "class": "WiregridWorld",
 "language": "GDScript",
 "path": "res://world/world.gd"
 } ]
 _global_script_class_icons={
+"WireSegment": "",
 "WiregridWorld": ""
 }
 

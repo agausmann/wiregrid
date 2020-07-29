@@ -11,6 +11,24 @@ static func as_string(dir: int) -> String:
 	][dir]
 
 
+static func as_vector(dir: int) -> Vector2:
+	return [
+		Vector2.RIGHT,
+		Vector2.UP,
+		Vector2.LEFT,
+		Vector2.DOWN,
+	][dir]
+
+
+static func as_angle(relative: int) -> float:
+	return PI * [
+		0.0,
+		0.5,
+		1.0,
+		1.5,
+	][relative]
+
+
 static func relative(a: int, b: int) -> int:
 	return (b - a + 4) % 4
 
