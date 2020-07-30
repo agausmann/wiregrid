@@ -4,7 +4,7 @@ extends Polygon2D
 const Direction := preload("res://util/direction.gd")
 
 const RADIUS := 0.0625
-const DIAG_OFFSET := RADIUS * (sqrt(0.5) - 0.5)
+const DIAG_OFFSET := RADIUS * (sqrt(0.5) - 0.25)
 
 
 func _init(start: Vector2, start_dir: int, diag: int, length: int):
