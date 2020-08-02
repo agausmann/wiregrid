@@ -14,11 +14,6 @@ var max_zoom := 8.0
 var pan := Vector2.ZERO
 var zoom := 1.0
 
-var wires := []
-var segments := []
-var tiles := {}
-var _free_wires := []
-var _free_segments := []
 var _simulation := Simulation.new()
 
 
@@ -29,7 +24,7 @@ func _process(delta: float) -> void:
 		+ Vector2.UP * Input.get_action_strength("pan_up")
 		+ Vector2.DOWN * Input.get_action_strength("pan_down")
 	)
-	zoom *= 1 + delta * zoom_speed * (
+	zoom *= 1.0 + delta * zoom_speed * (
 		Input.get_action_strength("zoom_in")
 		- Input.get_action_strength("zoom_out")
 	)
@@ -44,6 +39,30 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("zoom_in_step"):
-		zoom *= 1 + zoom_step
+		zoom *= 1.0 + zoom_step
 	if event.is_action_pressed("zoom_out_step"):
-		zoom /= 1 + zoom_step
+		zoom /= 1.0 + zoom_step
+
+
+func is_wire_valid(segment: WireSegment) -> bool:
+	return false
+
+
+func place_wire(segment: WireSegment) -> void:
+	pass
+
+
+func remove_wire(segment: WireSegment) -> void:
+	pass
+
+
+func is_component_valid(component: WireComponent) -> bool:
+	return false
+
+
+func place_component(component: WireComponent) -> void:
+	pass
+
+
+func remove_component(component: WireComponent) -> void:
+	pass

@@ -9,6 +9,16 @@
 config_version=4
 
 _global_script_classes=[ {
+"base": "Node2D",
+"class": "Wire",
+"language": "GDScript",
+"path": "res://world/wire.gd"
+}, {
+"base": "Node2D",
+"class": "WireComponent",
+"language": "GDScript",
+"path": "res://world/component.gd"
+}, {
 "base": "Polygon2D",
 "class": "WireSegment",
 "language": "GDScript",
@@ -20,6 +30,8 @@ _global_script_classes=[ {
 "path": "res://world/world.gd"
 } ]
 _global_script_class_icons={
+"Wire": "",
+"WireComponent": "",
 "WireSegment": "",
 "WiregridWorld": ""
 }

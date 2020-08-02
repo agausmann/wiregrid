@@ -7,6 +7,9 @@ const RADIUS := 0.0625
 const DIAG_OFFSET := RADIUS * (sqrt(0.5) - 0.25)
 
 
+var wire = null
+
+
 func _init(start: Vector2, start_dir: int, diag: int, length: int):
 	if length != 0:
 		start += Vector2(0.5, 0.5)
