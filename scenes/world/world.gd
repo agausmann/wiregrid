@@ -14,8 +14,9 @@ var max_zoom := 8.0
 var pan := Vector2.ZERO
 var zoom := 1.0
 
-var _simulation := Simulation.new()
+var cursor := Vector2.ZERO
 
+var _simulation := Simulation.new()
 
 func _process(delta: float) -> void:
 	pan += delta * pan_speed / zoom * (
@@ -35,6 +36,7 @@ func _process(delta: float) -> void:
 		Vector2(0.0, zoom),
 		0.5 * get_viewport_rect().size - pan * zoom
 	)
+	cursor = get_local_mouse_position().floor()
 
 
 func _input(event: InputEvent) -> void:
