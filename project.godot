@@ -17,12 +17,12 @@ _global_script_classes=[ {
 "base": "Node2D",
 "class": "WireComponent",
 "language": "GDScript",
-"path": "res://scenes/component/component.gd"
+"path": "res://nodes/component/component.gd"
 }, {
 "base": "Polygon2D",
 "class": "WireSegment",
 "language": "GDScript",
-"path": "res://scenes/segment/segment.gd"
+"path": "res://nodes/segment/segment.gd"
 }, {
 "base": "Node2D",
 "class": "WiregridWorld",
