@@ -7,7 +7,7 @@ export var current_state: bool = false setget set_current_state
 export var buffer_state: bool = false setget set_buffer_state
 
 
-func add_component(component: WireComponent) -> void:
+func add_component(component: Component) -> void:
 	assert(component.input_wire == null)
 	component.input_wire = self
 	
@@ -20,7 +20,7 @@ func add_component(component: WireComponent) -> void:
 		$InverterTint.add_child(component.inverter_tinted)
 
 
-func remove_component(component: WireComponent) -> void:
+func remove_component(component: Component) -> void:
 	assert(component.input_wire == self)
 	component.input_wire = null
 	

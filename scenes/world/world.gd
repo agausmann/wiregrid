@@ -75,13 +75,13 @@ func remove_wire(segment: WireSegment) -> void:
 	pass
 
 
-func is_component_valid(component: WireComponent) -> bool:
+func is_component_valid(component: Component) -> bool:
 	return false
 
 
-func place_component(component: WireComponent) -> void:
+func place_component(component: Component) -> void:
 	pass
 
 
-func remove_component(component: WireComponent) -> void:
+func remove_component(component: Component) -> void:
 	pass
