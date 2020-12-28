@@ -74,7 +74,7 @@ _global_script_class_icons={
 
 [application]
 
-config/name="wiregrid"
+config/name="FlipFlop"
 run/main_scene="res://scenes/world/world.tscn"
 config/icon="res://icon.png"
 

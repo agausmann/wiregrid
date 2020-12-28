@@ -1,13 +1,21 @@
-# wiregrid
+# FlipFlop
 
-Blazing fast 2D digital logic simulation, inspired by [Logic
-World](https://logicworld.net). Prerelease coming soon!
+A circuit simulator with two components, Flip and Flop.
 
-![4-Bit Adder Example](media/adder.png)
+Inspired by:
+
+- [Minecraft](https://www.minecraft.net) by Mojang Studios, for the grid-based
+  wiring mechanics in redstone.
+
+- [TUNG](https://jimmycushnie.itch.io/tung) and [Logic
+  World](https://logicworld.net) by Mouse Hat Games, for the art style.
+
+- [NandGame](https://www.nandgame.com) by Olav Junker Kjær, for the idea of
+  building up from something simple.
 
 ## License
 
-Wiregrid is distributed under the terms of both the MIT license and the Apache
+FlipFlop is distributed under the terms of both the MIT license and the Apache
 license version 2.0. See [LICENSE-APACHE](LICENSE-APACHE),
 [LICENSE-MIT](LICENSE-MIT), and [COPYRIGHT](COPYRIGHT) for details.
 
