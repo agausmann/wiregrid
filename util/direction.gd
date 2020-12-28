@@ -20,7 +20,7 @@ static func as_vector(dir: int) -> Vector2:
 	][dir]
 
 
-static func as_angle(relative: int) -> float:
+static func radians(relative: int) -> float:
 	return PI * [
 		0.0,
 		0.5,

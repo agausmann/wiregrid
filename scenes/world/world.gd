@@ -25,6 +25,10 @@ func _ready():
 	var wire := Wire.instance()
 	add_child(wire)
 	wire.add_segment(WireSegment.new(Vector2.ZERO, Direction.RIGHT, Direction.Relative.LEFT, 5))
+	wire.add_component(BufferComponent.new(Vector2(3, -2), Direction.RIGHT))
+	wire.add_component(InverterComponent.new(Vector2.ZERO, Direction.DOWN))
+	#wire.current_state = true
+	#wire.buffer_state = true
 
 
 func _process(delta: float) -> void:

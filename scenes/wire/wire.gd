@@ -9,7 +9,6 @@ export var buffer_state: bool = false setget set_buffer_state
 
 func add_component(component: Component) -> void:
 	assert(component.input_wire == null)
-	component.input_wire = self
 	
 	add_child(component)
 	if component.state_tinted != null:
@@ -21,9 +20,6 @@ func add_component(component: Component) -> void:
 
 
 func remove_component(component: Component) -> void:
-	assert(component.input_wire == self)
-	component.input_wire = null
-	
 	remove_child(component)
 	if component.state_tinted != null:
 		$StateTint.remove_child(component.state_tinted)

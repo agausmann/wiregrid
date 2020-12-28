@@ -11,6 +11,7 @@ var wire = null
 
 
 func _init(start: Vector2, start_dir: int, diag: int, length: int):
+	z_index = 1
 	if length != 0:
 		start += Vector2(0.5, 0.5)
 		var end := (
@@ -27,7 +28,7 @@ func _init(start: Vector2, start_dir: int, diag: int, length: int):
 
 
 static func tail(pos: Vector2, dir: int, diag: int) -> PoolVector2Array:
-	var angle := Direction.as_angle(Direction.relative(dir, Direction.RIGHT))
+	var angle := Direction.radians(Direction.relative(dir, Direction.RIGHT))
 	
 	return PoolVector2Array([
 		pos + Vector2(0.5 - DIAG_OFFSET * diag, -RADIUS).rotated(angle),
