@@ -1,6 +1,6 @@
 # FlipFlop
 
-A circuit simulator with two components, Flip and Flop.
+A digital logic simulator with two components, Flip and Flop.
 
 Inspired by:
 
