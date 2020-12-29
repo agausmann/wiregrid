@@ -50,23 +50,23 @@ impl Simulation {
     }
 
     #[export]
-    fn place_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.runner.send(Command::PlaceBlotter { in_id, out_id });
+    fn place_flop(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.runner.send(Command::PlaceFlop { in_id, out_id });
     }
 
     #[export]
-    fn remove_blotter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.runner.send(Command::RemoveBlotter { in_id, out_id });
+    fn remove_flop(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.runner.send(Command::RemoveFlop { in_id, out_id });
     }
 
     #[export]
-    fn place_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.runner.send(Command::PlaceInverter { in_id, out_id });
+    fn place_flip(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.runner.send(Command::PlaceFlip { in_id, out_id });
     }
 
     #[export]
-    fn remove_inverter(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
-        self.runner.send(Command::RemoveInverter { in_id, out_id });
+    fn remove_flip(&mut self, _owner: Reference, in_id: usize, out_id: usize) {
+        self.runner.send(Command::RemoveFlip { in_id, out_id });
     }
 
     #[export]
@@ -100,10 +100,10 @@ pub enum Command {
     TickRate { tick_rate: f32 },
     Set { id: usize },
     Reset { id: usize },
-    PlaceBlotter { in_id: usize, out_id: usize },
-    RemoveBlotter { in_id: usize, out_id: usize },
-    PlaceInverter { in_id: usize, out_id: usize },
-    RemoveInverter { in_id: usize, out_id: usize },
+    PlaceFlop { in_id: usize, out_id: usize },
+    RemoveFlop { in_id: usize, out_id: usize },
+    PlaceFlip { in_id: usize, out_id: usize },
+    RemoveFlip { in_id: usize, out_id: usize },
     Step,
     Start,
     Stop,
@@ -211,17 +211,17 @@ impl ThreadRunnerRemote {
             Command::Reset { id } => {
                 self.runner.reset(id);
             }
-            Command::PlaceBlotter { in_id, out_id } => {
-                self.runner.place_blotter(in_id, out_id);
+            Command::PlaceFlop { in_id, out_id } => {
+                self.runner.place_flop(in_id, out_id);
             }
-            Command::RemoveBlotter { in_id, out_id } => {
-                self.runner.remove_blotter(in_id, out_id);
+            Command::RemoveFlop { in_id, out_id } => {
+                self.runner.remove_flop(in_id, out_id);
             }
-            Command::PlaceInverter { in_id, out_id } => {
-                self.runner.place_inverter(in_id, out_id);
+            Command::PlaceFlip { in_id, out_id } => {
+                self.runner.place_flip(in_id, out_id);
             }
-            Command::RemoveInverter { in_id, out_id } => {
-                self.runner.remove_inverter(in_id, out_id);
+            Command::RemoveFlip { in_id, out_id } => {
+                self.runner.remove_flip(in_id, out_id);
             }
             Command::Step => {
                 self.step();
@@ -306,30 +306,30 @@ impl Runner {
         self.current.reset(id);
     }
 
-    pub fn place_blotter(&mut self, in_id: usize, out_id: usize) {
+    pub fn place_flop(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
-        if input.blotted.insert(out_id) && input.is_on() {
+        if input.flop.insert(out_id) && input.is_on() {
             self.current.set(out_id);
         }
     }
 
-    pub fn remove_blotter(&mut self, in_id: usize, out_id: usize) {
+    pub fn remove_flop(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
-        if input.blotted.remove(&out_id) && input.is_on() {
+        if input.flop.remove(&out_id) && input.is_on() {
             self.current.reset(out_id);
         }
     }
 
-    pub fn place_inverter(&mut self, in_id: usize, out_id: usize) {
+    pub fn place_flip(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
-        if input.inverted.insert(out_id) && !input.is_on() {
+        if input.flip.insert(out_id) && !input.is_on() {
             self.current.set(out_id);
         }
     }
 
-    pub fn remove_inverter(&mut self, in_id: usize, out_id: usize) {
+    pub fn remove_flip(&mut self, in_id: usize, out_id: usize) {
         let input = self.state.wire(in_id);
-        if input.inverted.remove(&out_id) && !input.is_on() {
+        if input.flip.remove(&out_id) && !input.is_on() {
             self.current.reset(out_id);
         }
     }
@@ -367,8 +367,8 @@ impl State {
 
             if new_state != old_state {
                 let (to_set, to_reset) = match new_state {
-                    true => (&wire.blotted, &wire.inverted),
-                    false => (&wire.inverted, &wire.blotted),
+                    true => (&wire.flop, &wire.flip),
+                    false => (&wire.flip, &wire.flop),
                 };
                 for &sub_id in to_set {
                     next.set(sub_id)
@@ -384,8 +384,8 @@ impl State {
 #[derive(Default)]
 pub struct Wire {
     input_count: isize,
-    blotted: HashSet<usize>,
-    inverted: HashSet<usize>,
+    flop: HashSet<usize>,
+    flip: HashSet<usize>,
 }
 
 impl Wire {
@@ -423,9 +423,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn inverter_loop() {
+    fn flip_loop() {
         let mut runner = Runner::new();
-        runner.place_inverter(0, 0);
+        runner.place_flip(0, 0);
         let mut wire0 = false;
         for _ in 0..100 {
             runner.step();
@@ -435,10 +435,10 @@ mod tests {
     }
 
     #[test]
-    fn blotter_loop() {
+    fn flop_loop() {
         let mut runner = Runner::new();
-        runner.place_blotter(0, 1);
-        runner.place_blotter(1, 0);
+        runner.place_flop(0, 1);
+        runner.place_flop(1, 0);
         runner.set(0);
         runner.step();
         runner.reset(0);
@@ -457,9 +457,9 @@ mod tests {
     #[test]
     fn rs_latch() {
         let mut runner = Runner::new();
-        runner.place_inverter(0, 1);
+        runner.place_flip(0, 1);
         runner.step();
-        runner.place_inverter(1, 0);
+        runner.place_flip(1, 0);
         runner.step();
         let mut wire0 = false;
         let mut wire1 = true;

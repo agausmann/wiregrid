@@ -10,11 +10,6 @@ config_version=4
 
 _global_script_classes=[ {
 "base": "Component",
-"class": "BufferComponent",
-"language": "GDScript",
-"path": "res://nodes/component/buffer.gd"
-}, {
-"base": "Component",
 "class": "ButtonComponent",
 "language": "GDScript",
 "path": "res://nodes/component/button.gd"
@@ -25,9 +20,14 @@ _global_script_classes=[ {
 "path": "res://nodes/component/component.gd"
 }, {
 "base": "Component",
-"class": "InverterComponent",
+"class": "FlipComponent",
 "language": "GDScript",
-"path": "res://nodes/component/inverter.gd"
+"path": "res://nodes/component/flip.gd"
+}, {
+"base": "Component",
+"class": "FlopComponent",
+"language": "GDScript",
+"path": "res://nodes/component/flop.gd"
 }, {
 "base": "Component",
 "class": "LampComponent",
@@ -60,10 +60,10 @@ _global_script_classes=[ {
 "path": "res://scenes/world/world.gd"
 } ]
 _global_script_class_icons={
-"BufferComponent": "",
 "ButtonComponent": "",
 "Component": "",
-"InverterComponent": "",
+"FlipComponent": "",
+"FlopComponent": "",
 "LampComponent": "",
 "PinComponent": "",
 "SwitchComponent": "",

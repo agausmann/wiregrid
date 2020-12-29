@@ -4,7 +4,7 @@ extends Node2D
 export var off_color := Color.black setget set_off_color
 export var on_color := Color.red setget set_on_color
 export var current_state: bool = false setget set_current_state
-export var buffer_state: bool = false setget set_buffer_state
+export var prev_state: bool = false setget set_prev_state
 
 
 func add_component(component: Component) -> void:
@@ -13,20 +13,20 @@ func add_component(component: Component) -> void:
 	add_child(component)
 	if component.state_tinted != null:
 		$StateTint.add_child(component.state_tinted)
-	if component.buffer_tinted != null:
-		$BufferTint.add_child(component.buffer_tinted)
-	if component.inverter_tinted != null:
-		$InverterTint.add_child(component.inverter_tinted)
+	if component.flop_tinted != null:
+		$FlopTint.add_child(component.flop_tinted)
+	if component.flip_tinted != null:
+		$FlipTint.add_child(component.flip_tinted)
 
 
 func remove_component(component: Component) -> void:
 	remove_child(component)
 	if component.state_tinted != null:
 		$StateTint.remove_child(component.state_tinted)
-	if component.buffer_tinted != null:
-		$BufferTint.remove_child(component.buffer_tinted)
-	if component.inverter_tinted != null:
-		$InverterTint.remove_child(component.inverter_tinted)
+	if component.flop_tinted != null:
+		$FlopTint.remove_child(component.flop_tinted)
+	if component.flip_tinted != null:
+		$FlipTint.remove_child(component.flip_tinted)
 
 
 func add_segment(segment: WireSegment) -> void:
@@ -58,12 +58,12 @@ func set_current_state(state: bool) -> void:
 	update_materials()
 
 
-func set_buffer_state(state: bool) -> void:
-	buffer_state = state
+func set_prev_state(state: bool) -> void:
+	prev_state = state
 	update_materials()
 
 
 func update_materials() -> void:
 	$StateTint.modulate = on_color if current_state else off_color
-	$BufferTint.modulate = on_color if buffer_state else off_color
-	$InverterTint.modulate = off_color if buffer_state else on_color
+	$FlopTint.modulate = on_color if prev_state else off_color
+	$FlipTint.modulate = off_color if prev_state else on_color

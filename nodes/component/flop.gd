@@ -1,9 +1,9 @@
-class_name BufferComponent
+class_name FlopComponent
 extends Component
 
-const BODY_TEXTURE = preload("res://assets/buffer/body.png")
-const INPUT_TEXTURE = preload("res://assets/buffer/input.png")
-const OUTPUT_TEXTURE = preload("res://assets/buffer/output.png")
+const BODY_TEXTURE = preload("res://assets/flop/body.png")
+const INPUT_TEXTURE = preload("res://assets/flop/input.png")
+const OUTPUT_TEXTURE = preload("res://assets/flop/output.png")
 
 const Direction = preload("res://util/direction.gd")
 
@@ -18,9 +18,9 @@ func _init(location: Vector2, direction: int) -> void:
 	state_tinted.z_index = 2
 	state_tinted.rotate(Direction.radians(Direction.Relative.OPPOSITE))
 	
-	buffer_tinted = Sprite.new()
-	buffer_tinted.scale = Vector2(1.0 / 16, 1.0 / 16)
-	buffer_tinted.texture = OUTPUT_TEXTURE
+	flop_tinted = Sprite.new()
+	flop_tinted.scale = Vector2(1.0 / 16, 1.0 / 16)
+	flop_tinted.texture = OUTPUT_TEXTURE
 	
 	untinted = Sprite.new()
 	untinted.scale = Vector2(1.0 / 16, 1.0 / 16)
@@ -36,12 +36,12 @@ func set_location(new_location: Vector2) -> void:
 	location = new_location
 	var offset = location + Vector2(0.5, 0.5)
 	self.state_tinted.position = offset
-	self.buffer_tinted.position = offset
+	self.flop_tinted.position = offset
 	self.untinted.position = offset
 
 
 func set_direction(new_direction: int) -> void:
 	direction = new_direction
 	self.state_tinted.rotation = Direction.radians(Direction.relative(Direction.LEFT, direction))
-	self.buffer_tinted.rotation = Direction.radians(Direction.relative(Direction.RIGHT, direction))
+	self.flop_tinted.rotation = Direction.radians(Direction.relative(Direction.RIGHT, direction))
 	self.untinted.rotation = Direction.radians(Direction.relative(Direction.RIGHT, direction))

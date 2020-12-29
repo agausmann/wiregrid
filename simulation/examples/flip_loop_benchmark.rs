@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 fn main() {
     let mut runner = ThreadRunner::new();
-    runner.send(Command::PlaceInverter {
+    runner.send(Command::PlaceFlip {
         in_id: 0,
         out_id: 0,
     });
